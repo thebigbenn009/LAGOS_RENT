@@ -92,6 +92,11 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 
 _Updated at the end of each session — overwrite, don't accumulate a log here._
 
-- Phase: not started
-- Last exit criterion met: —
-- Next: Phase 0 — freeze architecture decisions, write initial ADRs
+- Phase: 0 complete — written to `notes/0-architecture-decisions/`
+- Last exit criterion met: Phase 0 — state ownership documented for every mutable value;
+  19 ADRs written (the guide's 18 plus ADR-019, versioned event contracts)
+- Open: tenancy state machine (`03-state-machines.md` §5) is a proposal awaiting confirmation
+- To copy into the repo: `04-guardrails.md` → `docs/architecture/guardrails.md`;
+  `adr/*.md` → `docs/adr/`
+- Next: Phase 1 — monorepo, root Maven parent, Spring Cloud BOM (re-check the compatibility
+  table against spring.io first), CI running `mvn -B verify`
