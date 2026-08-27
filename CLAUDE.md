@@ -92,11 +92,8 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 
 _Updated at the end of each session — overwrite, don't accumulate a log here._
 
-- Phase: 0 complete — written to `notes/0-architecture-decisions/`
-- Last exit criterion met: Phase 0 — state ownership documented for every mutable value;
-  19 ADRs written (the guide's 18 plus ADR-019, versioned event contracts)
-- Open: tenancy state machine (`03-state-machines.md` §5) is a proposal awaiting confirmation
-- To copy into the repo: `04-guardrails.md` → `docs/architecture/guardrails.md`;
-  `adr/*.md` → `docs/adr/`
-- Next: Phase 1 — monorepo, root Maven parent, Spring Cloud BOM (re-check the compatibility
-  table against spring.io first), CI running `mvn -B verify`
+- Phase: 1 complete — monorepo parent POM, 9 service modules, and BOM dependencies verified via `mvn -B verify`
+- Last exit criterion met: Phase 1 — monorepo structure, root Maven parent, Spring Cloud BOM, `mvn -B verify` build success across all 9 microservice modules
+- Open: Config repo setup (Phase 2)
+- Next: Phase 2 — `lagos-rent-config` Git repository setup, external configuration structure, and local sibling directory structure
+
