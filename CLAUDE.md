@@ -92,8 +92,8 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 
 _Updated at the end of each session — overwrite, don't accumulate a log here._
 
-- Phase: 8 complete — Service Engineering Template established (Clean Architecture packages, RFC 7807 Problem Detail error handling, Flyway migrations, Resource Server security)
-- Last exit criterion met: Phase 8 — Layered package layout, standard error response format, and security template documented in `notes/8-service-engineering-template/`
-- Open: Account Service vertical slice implementation (Phase 9)
-- Next: Phase 9 — Implement Account Service vertical slice (JPA entities, DB migration, repository, DTOs, controllers, outbox event publishing)
+- Phase: 9 in progress — Account Service vertical slice plan documented in `notes/9-account-service/`
+- Last exit criterion met: Phase 8 — Layered package layout, standard error response format, and security template applied across all domain services
+- Open: Implement Account Service JPA entities, Flyway schema migration, repositories, application use cases, and REST controllers
+- Next: Create Flyway migration V1 and domain entities for `account-service`
 
