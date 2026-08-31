@@ -92,8 +92,8 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 
 _Updated at the end of each session — overwrite, don't accumulate a log here._
 
-- Phase: 1 complete — monorepo parent POM, 9 service modules, and BOM dependencies verified via `mvn -B verify`
-- Last exit criterion met: Phase 1 — monorepo structure, root Maven parent, Spring Cloud BOM, `mvn -B verify` build success across all 9 microservice modules
-- Open: Config repo setup (Phase 2)
-- Next: Phase 2 — `lagos-rent-config` Git repository setup, external configuration structure, and local sibling directory structure
+- Phase: 8 complete — Service Engineering Template established (Clean Architecture packages, RFC 7807 Problem Detail error handling, Flyway migrations, Resource Server security)
+- Last exit criterion met: Phase 8 — Layered package layout, standard error response format, and security template documented in `notes/8-service-engineering-template/`
+- Open: Account Service vertical slice implementation (Phase 9)
+- Next: Phase 9 — Implement Account Service vertical slice (JPA entities, DB migration, repository, DTOs, controllers, outbox event publishing)
 
