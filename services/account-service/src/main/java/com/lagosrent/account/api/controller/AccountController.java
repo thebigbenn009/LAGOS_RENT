@@ -41,51 +41,51 @@ public class AccountController {
     }
 
     @PutMapping("/me/landlord-profile")
-    public ResponseEntity<LandlordProfileResponse>updateLandlordProfile(
+    public ResponseEntity<LandlordProfileResponse> updateLandlordProfile(
             @AuthenticationPrincipal Jwt jwt,
-            @Valid, @RequestBody UpdateLandlordProfileRequest request
-            ){
+            @Valid @RequestBody UpdateLandlordProfileRequest request
+    ) {
         return ResponseEntity.ok(accountService.updateLandlordProfile(jwt.getSubject(), request));
     }
 
     @GetMapping("/me/landlord-profile")
-    public ResponseEntity<LandlordProfileResponse>getLandlordProfile(@AuthenticationPrincipal Jwt jwt){
+    public ResponseEntity<LandlordProfileResponse> getLandlordProfile(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(accountService.getLandlordProfile(jwt.getSubject()));
     }
 
     @PostMapping("/me/verification-cases")
-    public ResponseEntity<VerificationCaseResponse>submitVerificationCase(
+    public ResponseEntity<VerificationCaseResponse> submitVerificationCase(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody SubmitVerificationCaseRequest request
-    ){
+    ) {
         return ResponseEntity.ok(verificationService.submitVerificationCase(jwt.getSubject(), request));
     }
 
     @GetMapping("/me/verification-status")
-    public ResponseEntity<VerificationStatusResponse>getVerificationStatus(@AuthenticationPrincipal Jwt jwt){
+    public ResponseEntity<VerificationStatusResponse> getVerificationStatus(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(verificationService.getVerificationStatus(jwt.getSubject()));
     }
 
     @PostMapping("/me/saved-listings/{listingId}")
-    public ResponseEntity<Void>saveListing(
+    public ResponseEntity<Void> saveListing(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID listingId
-            ){
+    ) {
         accountService.saveListing(jwt.getSubject(), listingId);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/me/saved-listings/{listingId}")
-    public ResponseEntity<Void>removeSavedListing(
+    public ResponseEntity<Void> removeSavedListing(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID listingId
-    ){
+    ) {
         accountService.removedSavedListing(jwt.getSubject(), listingId);
-        return  ResponseEntity.noContent().build();
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me/saved-listings")
-    public ResponseEntity<List<UUID>>getSavedListings(@AuthenticationPrincipal Jwt jwt){
+    public ResponseEntity<List<UUID>> getSavedListings(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(accountService.getSavedListing(jwt.getSubject()));
     }
 }
