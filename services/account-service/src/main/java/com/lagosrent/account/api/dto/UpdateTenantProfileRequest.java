@@ -14,8 +14,8 @@ public record UpdateTenantProfileRequest(
         BigDecimal annualBudget,
 
         LocalDate moveInDate,
-        
+
         @Size(max = 100, message = "Preferred LGA cannot exceed 100 characters")
-        Size preferredLga
+        String preferredLga
 ) {
 }

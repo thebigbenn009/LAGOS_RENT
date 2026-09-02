@@ -43,7 +43,7 @@ public class AdminAuditRecord {
     private Instant createdAt = Instant.now();
 
     public AdminAuditRecord(String adminKeycloakId, String actionType,
-                            String entityType, String reason,
+                            String entityType, String entityId, String reason,
                             String previousState, String newState) {
         this.adminKeycloakId = adminKeycloakId;
         this.actionType = actionType;
@@ -54,4 +54,6 @@ public class AdminAuditRecord {
         this.newState = newState;
         this.createdAt = Instant.now();
     }
+
+
 }

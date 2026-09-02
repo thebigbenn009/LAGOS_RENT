@@ -6,6 +6,6 @@ import java.util.List;
 
 public record VerificationStatusResponse(
         VerificationStatus verificationStatus,
-        List<VerificationStatusResponse> cases
+        List<VerificationCaseResponse> cases
 ) {
 }
