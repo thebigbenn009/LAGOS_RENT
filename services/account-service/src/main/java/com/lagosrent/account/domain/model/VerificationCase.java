@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "verification_case")
+@Table(name = "verification_cases")
 @Getter
 @Setter
 @NoArgsConstructor

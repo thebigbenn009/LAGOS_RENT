@@ -90,10 +90,7 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 
 ## Current status
 
-_Updated at the end of each session — overwrite, don't accumulate a log here._
-
-- Phase: 9 in progress — Account Service vertical slice plan documented in `notes/9-account-service/`
-- Last exit criterion met: Phase 8 — Layered package layout, standard error response format, and security template applied across all domain services
-- Open: Implement Account Service JPA entities, Flyway schema migration, repositories, application use cases, and REST controllers
-- Next: Create Flyway migration V1 and domain entities for `account-service`
-
+- Phase: 10 in progress — Listing Service schema, entities, DTOs, services, and controllers designed and documented in `notes/10-listing-service/`
+- Last exit criterion met: Phase 9 — Account auto-provisioning from Keycloak JWT `sub`, profile management, and verification cases verified through API Gateway (HTTP 200 OK)
+- Open: Implement Listing Service schema, entities, DTOs, services, and controllers in `services/listing-service` and verify end-to-end listing lifecycle
+- Next: Apply Phase 10 notes to `listing-service`, run Flyway migration, and test via `test-listing.sh`
