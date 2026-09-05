@@ -22,7 +22,7 @@ public class AdminAccountService {
     private final AdminAuditRecordRepository auditRecordRepository;
 
     @Transactional(readOnly = true)
-    public Page<AccountResponse> listAccount(Pageable pageable) {
+    public Page<AccountResponse> listAccounts(Pageable pageable) {
         return accountRepository.findAll(pageable).map(AccountResponse::from);
     }
 

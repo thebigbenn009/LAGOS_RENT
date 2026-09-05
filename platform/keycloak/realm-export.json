@@ -962,7 +962,7 @@
       "consentRequired": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "publicClient": true,
       "frontchannelLogout": true,
@@ -2774,5 +2774,61 @@
   },
   "clientPolicies": {
     "policies": []
-  }
+  },
+  "users": [
+    {
+      "username": "tenant_test",
+      "enabled": true,
+      "email": "tenant@example.com",
+      "firstName": "Tenant",
+      "lastName": "User",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "TENANT"
+      ]
+    },
+    {
+      "username": "landlord_test",
+      "enabled": true,
+      "email": "landlord@example.com",
+      "firstName": "Landlord",
+      "lastName": "User",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "LANDLORD"
+      ]
+    },
+    {
+      "username": "admin_test",
+      "enabled": true,
+      "email": "admin@example.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN"
+      ]
+    }
+  ]
 }

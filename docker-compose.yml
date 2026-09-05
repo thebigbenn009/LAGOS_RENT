@@ -19,7 +19,7 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_MULTIPLE_DATABASES: account_db,listing_db,rental_db,payment_db,search_db,notification_db
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
@@ -55,12 +55,14 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.0
     container_name: lagos-rent-keycloak
-    command: start-dev
+    command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     ports:
       - "8180:8080"
+    volumes:
+      - ./platform/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
     networks:
       - lagos-rent-net
     healthcheck:

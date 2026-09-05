@@ -27,7 +27,7 @@ public class AdminAuditRecord {
     @Column(name = "entity_type", nullable = false)
     private String entityType;
 
-    @Column(name = "entity_type", nullable = false)
+    @Column(name = "entity_id", nullable = false)
     private String entityId;
 
     @Column(nullable = false, columnDefinition = "TEXT")
