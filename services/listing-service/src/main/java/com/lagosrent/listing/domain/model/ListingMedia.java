@@ -32,6 +32,9 @@ public class ListingMedia {
     @Column(nullable = false)
     private String filename;
 
+    @Column(name = "order_index", nullable = false)
+    private Integer orderIndex = 0;
+
     private String caption;
 
     @Column(name = "is_primary", nullable = false)
@@ -39,4 +42,14 @@ public class ListingMedia {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
+
+    public ListingMedia(Listing listing, MediaType mediaType, String s3Key, String filename, Integer orderIndex, boolean isPrimary) {
+        this.listing = listing;
+        this.mediaType = mediaType;
+        this.s3Key = s3Key;
+        this.filename = filename;
+        this.orderIndex = orderIndex;
+        this.isPrimary = isPrimary;
+        this.createdAt = Instant.now();
+    }
 }
