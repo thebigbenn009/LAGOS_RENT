@@ -18,7 +18,7 @@ public record CreateListingRequest(
         @NotNull @Positive(message = "Base rent amount is required")
         BigDecimal rentAmount,
 
-        String period,
+        String rentPeriod,
 
         @NotNull(message = "Available from date is required")
         LocalDate availableFrom,
