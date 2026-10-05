@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ListingRepository extends JpaRepository<Listing, UUID> {
-    List<Listing> findByLandlordKeyCloakId(String landlordKeycloakId);
+    List<Listing> findByLandlordKeycloakId(String landlordKeycloakId);
 
     List<Listing> findByRentalUnit(UUID rentalUnitId);
 
