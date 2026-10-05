@@ -56,4 +56,19 @@ public class ListingReservationService {
             listingRepository.save(listing);
         }
     }
+
+    @Transactional
+    public void confirmTenancy(UUID listingId, String reservationReference) {
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
+
+        ListingReservation reservation = reservationRepository.findByReservationReference(reservationReference)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation", reservationReference));
+
+        reservation.setStatus(ReservationStatus.CONVERTED_TO_TENANCY);
+        reservationRepository.save(reservation);
+
+        listing.setStatus(ListingStatus.RENTED);
+        listingRepository.save(listing);
+    }
 }

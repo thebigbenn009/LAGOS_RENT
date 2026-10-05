@@ -1,5 +1,6 @@
 package com.lagosrent.listing.api.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -9,15 +10,27 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+@Schema(name = "UpdateListingRequest", description = "Payload for updating an existing draft or modification-requested listing")
 public record UpdateListingRequest(
+        @Schema(description = "Listing public headline", example = "Luxury 2-Bedroom Flat in Lekki Phase 1 (Renovated)")
         @NotBlank
         String title,
+
+        @Schema(description = "Detailed property marketing and amenity description", example = "Modern apartment with 24/7 power, swimming pool, and fitted kitchen.")
         String description,
+
+        @Schema(description = "Base rent in NGN", example = "3800000.00")
         @NotNull @Positive
         BigDecimal rentAmount,
+
+        @Schema(description = "Rent frequency period (e.g. YEARLY, MONTHLY)", example = "YEARLY")
         String rentPeriod,
+
+        @Schema(description = "Date from which unit is ready for occupancy", example = "2026-11-15")
         @NotNull
         LocalDate availableFrom,
+
+        @Schema(description = "Updated mandatory and optional fee breakdown items")
         @Valid
         List<ListingFeeDto> fees
 ) {

@@ -88,9 +88,7 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - `docker compose up` — local platform (Phase 5)
 - _(add more here as they're established)_
 
-## Current status
-
-- Phase: 10 in progress — Listing Service schema, entities, DTOs, services, and controllers designed and documented in `notes/10-listing-service/`
-- Last exit criterion met: Phase 9 — Account auto-provisioning from Keycloak JWT `sub`, profile management, and verification cases verified through API Gateway (HTTP 200 OK)
-- Open: Implement Listing Service schema, entities, DTOs, services, and controllers in `services/listing-service` and verify end-to-end listing lifecycle
-- Next: Apply Phase 10 notes to `listing-service`, run Flyway migration, and test via `test-listing.sh`
+- Phase: 13 complete — Search Service CQRS read model implemented, Flyway schema (V1 search_listings & inbox) migrated, idempotent event listener active with version guardrail, and dynamic search API verified through Gateway
+- Last exit criterion met: Phase 13 — Search projection built asynchronously from listing events, search never writes authoritative state
+- Open: Phase 14 — Complete the first distributed vertical slice (end-to-end integration & resilience against 5 failure scenarios)
+- Next: Prepare Phase 14 end-to-end runbook and failure scenario notes in `notes/14-distributed-vertical-slice/`

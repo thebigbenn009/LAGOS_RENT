@@ -3,6 +3,7 @@ package com.lagosrent.listing.application.service;
 import com.lagosrent.listing.api.dto.*;
 import com.lagosrent.listing.application.exception.ResourceNotFoundException;
 import com.lagosrent.listing.domain.model.*;
+import com.lagosrent.listing.infrastructure.messaging.payload.ListingPublishedPayload;
 import com.lagosrent.listing.infrastructure.persistence.ListingMediaRepository;
 import com.lagosrent.listing.infrastructure.persistence.ListingRepository;
 import com.lagosrent.listing.infrastructure.persistence.RentalUnitRepository;
@@ -21,6 +22,7 @@ public class ListingService {
     private final ListingRepository listingRepository;
     private final RentalUnitRepository rentalUnitRepository;
     private final ListingMediaRepository listingMediaRepository;
+    private final OutboxService outboxService;
 
     @Transactional
     public ListingResponse createListing(UUID unitId, String landlordKeycloakId, CreateListingRequest request) {
@@ -53,7 +55,7 @@ public class ListingService {
                         feeDto.amount(),
                         feeDto.recipient(),
                         feeDto.frequency() != null ? feeDto.frequency() : FeeFrequency.ONE_OFF,
-                        feeDto.isRefundable(),
+                        Boolean.TRUE.equals(feeDto.isRefundable()),
                         feeDto.explanation()
                 );
                 listing.getFees().add(fee);
@@ -93,7 +95,7 @@ public class ListingService {
                         feeDto.amount(),
                         feeDto.recipient(),
                         feeDto.frequency() != null ? feeDto.frequency() : FeeFrequency.ONE_OFF,
-                        feeDto.isRefundable(),
+                        Boolean.TRUE.equals(feeDto.isRefundable()),
                         feeDto.explanation()
                 );
                 listing.getFees().add(fee);
@@ -126,7 +128,7 @@ public class ListingService {
     }
 
     @Transactional
-    public ListingResponse publishResponse(UUID listingId, String landlordKeycloakId) {
+    public ListingResponse publishListing(UUID listingId, String landlordKeycloakId) {
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
 
@@ -139,6 +141,20 @@ public class ListingService {
         }
 
         listing.setStatus(ListingStatus.PUBLISHED);
+        Listing savedListing = listingRepository.saveAndFlush(listing);
+
+        // Record outbox event atomically in the exact same transaction
+        ListingPublishedPayload payload = toListingPublishedPayload(savedListing);
+        outboxService.recordEvent(
+                "listing",
+                savedListing.getId().toString(),
+                savedListing.getVersion(),
+                "listing.published.v1",
+                payload,
+                null,
+                null
+        );
+
         return ListingResponse.from(listingRepository.save(listing));
     }
 
@@ -151,7 +167,7 @@ public class ListingService {
 
     @Transactional(readOnly = true)
     public List<ListingResponse> getLandlordListings(String landlordKeycloakId) {
-        return listingRepository.findByLandlordKeyCloakId(landlordKeycloakId)
+        return listingRepository.findByLandlordKeycloakId(landlordKeycloakId)
                 .stream()
                 .map(ListingResponse::from)
                 .toList();
@@ -172,7 +188,7 @@ public class ListingService {
                 mediaDto.s3Key(),
                 mediaDto.filename(),
                 mediaDto.orderIndex() != null ? mediaDto.orderIndex() : 0,
-                mediaDto.isPrimary()
+                Boolean.TRUE.equals(mediaDto.isPrimary())
         );
         media.setCaption(mediaDto.caption());
         return ListingMediaDto.from(listingMediaRepository.save(media));
@@ -189,5 +205,59 @@ public class ListingService {
             }
         }
         listing.setMoveInTotal(total);
+    }
+
+    private ListingPublishedPayload toListingPublishedPayload(Listing listing) {
+        RentalUnit unit = listing.getRentalUnit();
+        Property property = unit.getProperty();
+
+        List<ListingPublishedPayload.FeeItemPayload> feePayloads = listing.getFees().stream()
+                .map(fee -> new ListingPublishedPayload.FeeItemPayload(
+                        fee.getFeeType().name(),
+                        fee.getAmount(),
+                        fee.getRecipient().name(),
+                        fee.getFrequency().name(),
+                        fee.isRefundable(),
+                        fee.getExplanation()
+                ))
+                .toList();
+
+        List<ListingPublishedPayload.MediaItemPayload> mediaPayloads = listing.getMedia().stream()
+                .map(m -> new ListingPublishedPayload.MediaItemPayload(
+                        m.getMediaType().name(),
+                        m.getS3Key(),
+                        m.getFilename(),
+                        m.getOrderIndex(),
+                        m.getCaption(),
+                        m.isPrimary()
+                ))
+                .toList();
+
+        return new ListingPublishedPayload(
+                listing.getId(),
+                listing.getLandlordKeycloakId(),
+                property.getId(),
+                unit.getId(),
+                listing.getTitle(),
+                listing.getDescription(),
+                listing.getRentAmount(),
+                listing.getRentPeriod(),
+                listing.getMoveInTotal(),
+                listing.getAvailableFrom(),
+                property.getState(),
+                property.getLga(),
+                property.getArea(),
+                property.getLandmark(),
+                property.getLatitude(),
+                property.getLongitude(),
+                unit.getUnitType().name(),
+                unit.getBedrooms(),
+                unit.getBathrooms(),
+                unit.getToilets(),
+                unit.getSizeSqMeters(),
+                unit.getFloorNumber(),
+                feePayloads,
+                mediaPayloads
+        );
     }
 }
