@@ -6,6 +6,8 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
+import static org.springframework.http.HttpMethod.POST;
+
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
@@ -17,8 +19,8 @@ public class SecurityConfig {
                         // public endpoints
                         .pathMatchers("/actuator/**")
                         .permitAll()
-                        .pathMatchers("/api/v1/search/**")
-                        .permitAll()
+                        .pathMatchers("/api/v1/search/**").permitAll()
+                        .pathMatchers(POST, "/api/v1/payments/webhooks/**").permitAll()
                         // All other API endpoints require valid JWT authentication
                         .anyExchange()
                         .authenticated())
