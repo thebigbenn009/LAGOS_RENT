@@ -88,7 +88,7 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - `docker compose up` — local platform (Phase 5)
 - _(add more here as they're established)_
 
-- Phase: 13 complete — Search Service CQRS read model implemented, Flyway schema (V1 search_listings & inbox) migrated, idempotent event listener active with version guardrail, and dynamic search API verified through Gateway
-- Last exit criterion met: Phase 13 — Search projection built asynchronously from listing events, search never writes authoritative state
-- Open: Phase 14 — Complete the first distributed vertical slice (end-to-end integration & resilience against 5 failure scenarios)
-- Next: Prepare Phase 14 end-to-end runbook and failure scenario notes in `notes/14-distributed-vertical-slice/`
+- Phase: 15 complete — Rental Service vertical slice implemented (Inspection requests, rental applications, immutable price snapshots locked, saga outbox initiated)
+- Last exit criterion met: Phase 15 — Application submission locks immutable price snapshot; acceptance initiates rental saga
+- Open: Phase 16 — Implement Payment Service (Non-custodial payable, provider adapter, HMAC signed webhooks, idempotent transactions, receipts, outbox emission)
+- Next: Copy notes from `notes/16-payment-service/` to `services/payment-service/`, boot service, and run `test-payment-workflow.sh`

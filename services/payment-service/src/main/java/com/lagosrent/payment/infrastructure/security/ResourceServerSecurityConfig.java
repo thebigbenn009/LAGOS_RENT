@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.springframework.http.HttpMethod.POST;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -29,8 +31,14 @@ public class ResourceServerSecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/**")
+                        .requestMatchers(
+                                "/actuator/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        )
                         .permitAll()
+                        .requestMatchers(POST, "/api/v1/payments/webhooks/**").permitAll()
                         .anyRequest()
                         .authenticated()
                 )

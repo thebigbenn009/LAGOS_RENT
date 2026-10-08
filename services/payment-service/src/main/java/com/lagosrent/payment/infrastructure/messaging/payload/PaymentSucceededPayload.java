@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record PaymentSucceededPayload(
-        String paymentId,
+        UUID paymentId,
         UUID applicationId,
         String tenantKeycloakId,
         String landlordKeycloakId,
