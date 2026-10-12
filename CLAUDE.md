@@ -64,6 +64,10 @@ Full list: `docs/implementation-guide.md` §3. The ones that bite most often:
 - Search is a projection, never the source of truth. Payment redirects are never proof of
   payment.
 - Every synchronous call has an explicit timeout. Every admin mutation is audited.
+- Production Git Workflow: Never push directly to main. Work in short-lived feature branches
+  (`feat/<scope>-<desc>`, `fix/...`, `test/...`). Use atomic Conventional Commits
+  (`feat(payment): ...`, `test(rental): ...`). Provide clear commit and PR instructions
+  in every phase note (see `notes/git-industry-guide/`).
 
 ## Subagents
 
@@ -88,7 +92,8 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - `docker compose up` — local platform (Phase 5)
 - _(add more here as they're established)_
 
-- Phase: 15 complete — Rental Service vertical slice implemented (Inspection requests, rental applications, immutable price snapshots locked, saga outbox initiated)
-- Last exit criterion met: Phase 15 — Application submission locks immutable price snapshot; acceptance initiates rental saga
-- Open: Phase 16 — Implement Payment Service (Non-custodial payable, provider adapter, HMAC signed webhooks, idempotent transactions, receipts, outbox emission)
-- Next: Copy notes from `notes/16-payment-service/` to `services/payment-service/`, boot service, and run `test-payment-workflow.sh`
+- Phase: 16 complete — Payment Service vertical slice implemented (Non-custodial payable, mock/live provider adapter, HMAC signed webhooks, idempotent transactions, receipts, outbox emission)
+- Last exit criterion met: Phase 16 — Provider webhook signature cryptographically verified; duplicate deliveries safely ignored
+- Open: Phase 17 — Implement the Rental-Payment Saga (ADR-009 orchestrator, atomic listing reservation, payable auto-provisioning, tenancy activation)
+- Branch: `rental-payment-saga`
+- Next: Branch off main, copy notes from `notes/17-rental-payment-saga/`, execute atomic commits, and run `test-saga-workflow.sh`
