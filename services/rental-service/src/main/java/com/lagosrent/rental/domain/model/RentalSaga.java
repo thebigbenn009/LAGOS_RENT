@@ -28,8 +28,9 @@ public class RentalSaga {
     @Column(name = "reservation_reference")
     private String reservationReference;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "current_step", nullable = false)
-    private String currentStep = "RESERVATION_REQUESTED";
+    private SagaStep currentStep = SagaStep.RESERVATION_REQUESTED;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -45,7 +46,6 @@ public class RentalSaga {
         this.application = application;
         this.listingId = listingId;
         this.reservationReference = reservationReference;
-        this.currentStep = "RESERVATION_REQUESTED";
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }

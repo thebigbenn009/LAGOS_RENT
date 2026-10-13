@@ -64,6 +64,17 @@ Full list: `docs/implementation-guide.md` §3. The ones that bite most often:
 - Search is a projection, never the source of truth. Payment redirects are never proof of
   payment.
 - Every synchronous call has an explicit timeout. Every admin mutation is audited.
+- Production Git Workflow: Never push directly to main. Work in short-lived feature branches
+  (`feat/<scope>-<desc>`, `fix/...`, `test/...`). Use atomic Conventional Commits
+  (`feat(payment): ...`, `test(rental): ...`). Provide clear commit and PR instructions
+  in every phase note (see `notes/git-industry-guide/`).
+- **Interactive Shell Safety & Test Endpoint Standards (Strict Non-Negotiable)**:
+  - **No Pre-existing State Assumptions**: Always design test flows to provision fresh upstream entities from scratch (Property -> Unit -> Listing -> Application). Never assume the database has an existing listing or application.
+  - **Step-by-Step Interactive Execution**: Provide tests as modular, step-by-step commands with clear explanations of what happens behind the scenes. Never push the user to run batch scripts all at once when they want interactive step-by-step observation.
+  - **No `exit 1` in Interactive Commands**: Never include `exit 1` in snippets meant for interactive shell execution, as it terminates the user's terminal window and loses exported session variables.
+  - **Edge Gateway Token Propagation**: Always include `-H "Authorization: Bearer $TOKEN"` on API Gateway routes (`:8080`) since Gateway enforces authentication on all non-public routes.
+  - **Zero `!` in Double Quotes**: NEVER output shell commands containing exclamation marks `!` inside double quotes (`"..."`). In macOS Zsh/Bash, `!` triggers history expansion, swallowing quotes and hanging the shell. Use single quotes `'...'` or omit `!` entirely.
+  - Format all JSON API responses with `jq .` so the user can inspect every field and status code clearly.
 
 ## Subagents
 
@@ -88,7 +99,9 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - `docker compose up` — local platform (Phase 5)
 - _(add more here as they're established)_
 
-- Phase: 15 complete — Rental Service vertical slice implemented (Inspection requests, rental applications, immutable price snapshots locked, saga outbox initiated)
-- Last exit criterion met: Phase 15 — Application submission locks immutable price snapshot; acceptance initiates rental saga
-- Open: Phase 16 — Implement Payment Service (Non-custodial payable, provider adapter, HMAC signed webhooks, idempotent transactions, receipts, outbox emission)
-- Next: Copy notes from `notes/16-payment-service/` to `services/payment-service/`, boot service, and run `test-payment-workflow.sh`
+- Phase: 17 complete — Distributed Rental-Payment Saga orchestration fully implemented and verified end-to-end (ADR-009 orchestrator, atomic listing reservation, auto-provisioned payable via RabbitMQ, HMAC signed webhook settlement, tenancy activation in rental_db, and final inventory transition to RENTED)
+- Last exit criterion met: Phase 17 — Distributed saga verified end-to-end across rental-service, listing-service, and payment-service via RabbitMQ with zero 2PC transactions
+- Open: Phase 18 — Notification Service (Email/SMS notifications for saga events, tenancy confirmations, and payment receipts)
+- Branch: `rental-payment-saga`
+- Next: Commit Phase 17 changes, merge PR into main, and begin Phase 18 planning
+

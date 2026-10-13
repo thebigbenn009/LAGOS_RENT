@@ -8,23 +8,23 @@ echo "========================================================="
 echo ""
 echo "--- Step 0: Fetching Keycloak Tokens ---"
 
-TENANT_TOKEN=$(curl -s -X POST "http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token" \
-  -d "client_id=web-application" \
-  -d "grant_type=password" \
-  -d "username=tenant_test" \
-  -d "password=Password123!" | jq -r .access_token)
+TENANT_TOKEN=$(curl -s -X POST 'http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token' \
+  -d 'client_id=web-application' \
+  -d 'grant_type=password' \
+  -d 'username=tenant_test' \
+  -d 'password=Password123!' | jq -r .access_token)
 
-LANDLORD_TOKEN=$(curl -s -X POST "http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token" \
-  -d "client_id=web-application" \
-  -d "grant_type=password" \
-  -d "username=landlord_test" \
-  -d "password=Password123!" | jq -r .access_token)
+LANDLORD_TOKEN=$(curl -s -X POST 'http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token' \
+  -d 'client_id=web-application' \
+  -d 'grant_type=password' \
+  -d 'username=landlord_test' \
+  -d 'password=Password123!' | jq -r .access_token)
 
-ADMIN_TOKEN=$(curl -s -X POST "http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token" \
-  -d "client_id=web-application" \
-  -d "grant_type=password" \
-  -d "username=admin_test" \
-  -d "password=Password123!" | jq -r .access_token)
+ADMIN_TOKEN=$(curl -s -X POST 'http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token' \
+  -d 'client_id=web-application' \
+  -d 'grant_type=password' \
+  -d 'username=admin_test' \
+  -d 'password=Password123!' | jq -r .access_token)
 
 echo "Tokens successfully acquired."
 echo ""

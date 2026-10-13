@@ -8,8 +8,9 @@ import java.util.UUID;
 public record TenancyConfirmedPayload(
         UUID tenancyId,
         UUID applicationId,
-        String listingId,
+        UUID listingId,
         String tenantKeycloakId,
+        String landlordKeycloakId,
         LocalDate startDate,
         LocalDate endDate,
         BigDecimal annualRent,
