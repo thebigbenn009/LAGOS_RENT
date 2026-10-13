@@ -90,7 +90,7 @@ public class RentalSagaEventListener {
                 "rental_saga",
                 saga.getId().toString(),
                 2L,
-                "rental-reservation-confirmed.v1",
+                "rental.reservation-confirmed.v1",
                 new RentalReservationConfirmedPayload(
                         app.getId(),
                         app.getListingId(),

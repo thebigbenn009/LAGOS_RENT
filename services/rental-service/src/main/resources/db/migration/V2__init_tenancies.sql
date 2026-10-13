@@ -1,6 +1,6 @@
 -- Phase 17: Tenancy Activation Table
 CREATE TABLE IF NOT EXISTS tenancies (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     application_id UUID NOT NULL REFERENCES rental_applications(id) ON DELETE RESTRICT,
     listing_id UUID NOT NULL,
     tenant_keycloak_id VARCHAR(64) NOT NULL,

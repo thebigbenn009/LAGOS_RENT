@@ -1,0 +1,507 @@
+{
+  "info": {
+    "_postman_id": "a901f4c2-98ab-41c0-a7d1-lagos-rent-api",
+    "name": "Lagos Rent Platform API",
+    "description": "Postman Collection for Lagos Rent distributed services (Account, Listing, Search, Rental, Payment, Keycloak Auth).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Authentication (Keycloak)",
+      "item": [
+        {
+          "name": "Landlord Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.environment.set('landlord_token', json.access_token);",
+                  "    console.log('✅ Landlord token saved to environment variable landlord_token');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "web-application", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" },
+                { "key": "username", "value": "landlord_test", "type": "text" },
+                { "key": "password", "value": "Password123!", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/lagos-rent/protocol/openid-connect/token",
+              "host": ["{{keycloak_url}}"],
+              "path": ["realms", "lagos-rent", "protocol", "openid-connect", "token"]
+            }
+          }
+        },
+        {
+          "name": "Tenant Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.environment.set('tenant_token', json.access_token);",
+                  "    console.log('✅ Tenant token saved to environment variable tenant_token');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "web-application", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" },
+                { "key": "username", "value": "tenant_test", "type": "text" },
+                { "key": "password", "value": "Password123!", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/lagos-rent/protocol/openid-connect/token",
+              "host": ["{{keycloak_url}}"],
+              "path": ["realms", "lagos-rent", "protocol", "openid-connect", "token"]
+            }
+          }
+        },
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.environment.set('admin_token', json.access_token);",
+                  "    console.log('✅ Admin token saved to environment variable admin_token');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "web-application", "type": "text" },
+                { "key": "grant_type", "value": "password", "type": "text" },
+                { "key": "username", "value": "admin_test", "type": "text" },
+                { "key": "password", "value": "Password123!", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/lagos-rent/protocol/openid-connect/token",
+              "host": ["{{keycloak_url}}"],
+              "path": ["realms", "lagos-rent", "protocol", "openid-connect", "token"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Account Service",
+      "item": [
+        {
+          "name": "Get Current Profile (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{landlord_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/accounts/me",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "accounts", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Listing Service",
+      "item": [
+        {
+          "name": "1. Create Property",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.environment.set('property_id', json.id);",
+                  "    console.log('Saved property_id:', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{landlord_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Admiralty Luxury Heights\",\n  \"lga\": \"Eti-Osa\",\n  \"area\": \"Lekki Phase 1\",\n  \"addressLine1\": \"28 Admiralty Way\",\n  \"landmark\": \"Beside Sailors Lounge\",\n  \"latitude\": 6.4475,\n  \"longitude\": 3.4730\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/properties",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "properties"]
+            }
+          }
+        },
+        {
+          "name": "2. Add Rental Unit to Property",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.environment.set('unit_id', json.id);",
+                  "    console.log('Saved unit_id:', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{landlord_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitNumber\": \"Penthouse 4A\",\n  \"unitType\": \"APARTMENT\",\n  \"bedrooms\": 4,\n  \"bathrooms\": 4,\n  \"toilets\": 5,\n  \"sizeSqMeters\": 220.0,\n  \"floorNumber\": 4\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/properties/{{property_id}}/units",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "properties", "{{property_id}}", "units"]
+            }
+          }
+        },
+        {
+          "name": "3. Create Listing with Fees",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.environment.set('listing_id', json.id);",
+                  "    console.log('Saved listing_id:', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{landlord_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Waterfront 4 Bedroom Penthouse in Lekki Phase 1\",\n  \"description\": \"Stunning water view with private elevator, gym, and 24/7 power.\",\n  \"rentAmount\": 8000000.00,\n  \"rentPeriod\": \"ANNUALLY\",\n  \"availableFrom\": \"2026-11-01\",\n  \"fees\": [\n    {\n      \"feeType\": \"CAUTION_DEPOSIT\",\n      \"amount\": 800000.00,\n      \"recipient\": \"LANDLORD\",\n      \"frequency\": \"ONE_OFF\",\n      \"isRefundable\": true,\n      \"explanation\": \"Refundable security deposit against damages.\"\n    },\n    {\n      \"feeType\": \"SERVICE_CHARGE\",\n      \"amount\": 1200000.00,\n      \"recipient\": \"PROPERTY_MANAGER\",\n      \"frequency\": \"ANNUALLY\",\n      \"isRefundable\": false,\n      \"explanation\": \"Diesel generation, private security, facility management.\"\n    },\n    {\n      \"feeType\": \"LEGAL_AND_COUNSEL\",\n      \"amount\": 400000.00,\n      \"recipient\": \"AGENT\",\n      \"frequency\": \"ONE_OFF\",\n      \"isRefundable\": false,\n      \"explanation\": \"Legal drafting and documentation fee.\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/units/{{unit_id}}/listings",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "units", "{{unit_id}}", "listings"]
+            }
+          }
+        },
+        {
+          "name": "4. Get Listing by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.version !== undefined) {",
+                  "    pm.environment.set('listing_version', json.version);",
+                  "    console.log('Saved listing_version:', json.version);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{landlord_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/listings/{{listing_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "listings", "{{listing_id}}"]
+            }
+          }
+        },
+        {
+          "name": "5. Submit Listing for Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{landlord_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/listings/{{listing_id}}/submit",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "listings", "{{listing_id}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "6. Admin Approve Listing",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Listing details and transparent fees verified.\",\n  \"expectedVersion\": {{listing_version}}\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/admin/listings/{{listing_id}}/approve",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "admin", "listings", "{{listing_id}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "7. Landlord Publish Listing",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{landlord_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/listings/{{listing_id}}/publish",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "listings", "{{listing_id}}", "publish"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Search Service",
+      "item": [
+        {
+          "name": "Search Published Listings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/search/listings?area=Lekki Phase 1&bedrooms=4",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "search", "listings"],
+              "query": [
+                { "key": "area", "value": "Lekki Phase 1" },
+                { "key": "bedrooms", "value": "4" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Rental Applications",
+      "item": [
+        {
+          "name": "1. Tenant View My Applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tenant_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/rentals/applications/my-applications",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "rentals", "applications", "my-applications"]
+            }
+          }
+        },
+        {
+          "name": "2. Tenant Create Draft Application",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.environment.set('application_id', json.id);",
+                  "    console.log('Saved application_id:', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tenant_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listing_id}}\",\n  \"employmentStatus\": \"Senior Software Engineer\",\n  \"annualIncome\": 25000000.00,\n  \"previousLandlordContact\": \"landlord@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/rentals/applications",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "rentals", "applications"]
+            }
+          }
+        },
+        {
+          "name": "3. Tenant Submit Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tenant_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/rentals/applications/{{application_id}}/submit",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "rentals", "applications", "{{application_id}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "4. Landlord Accept Application (Initiate Saga)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{landlord_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/rentals/applications/{{application_id}}/accept",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "rentals", "applications", "{{application_id}}", "accept"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Payment Service",
+      "item": [
+        {
+          "name": "1. Tenant View My Payables",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json) && json.length > 0 && json[0].id) {",
+                  "    pm.environment.set('payable_id', json[0].id);",
+                  "    console.log('Saved payable_id:', json[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tenant_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/payments/payables/my-payables",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "payments", "payables", "my-payables"]
+            }
+          }
+        },
+        {
+          "name": "2. Tenant Initialize Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tenant_token}}" },
+              { "key": "X-Correlation-ID", "value": "{{$guid}}" },
+              { "key": "X-Idempotency-Key", "value": "postman-checkout-{{$guid}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/payments/payables/{{payable_id}}/initialize",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "payments", "payables", "{{payable_id}}", "initialize"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
