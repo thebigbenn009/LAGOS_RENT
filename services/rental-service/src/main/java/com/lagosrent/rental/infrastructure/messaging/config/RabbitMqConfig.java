@@ -1,15 +1,17 @@
 package com.lagosrent.rental.infrastructure.messaging.config;
 
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
-import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.amqp.support.converter.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.springframework.amqp.core.AcknowledgeMode.MANUAL;
 
 @Configuration
 public class RabbitMqConfig {
@@ -124,6 +126,7 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(searchListingsDlq).to(deadLetterExchange).with(QUEUE_SEARCH_LISTINGS_DLQ);
     }
 
+    // Listing Events Queue
     @Bean
     public Binding listingReservationEvents(Queue listingEventsQueue, TopicExchange domainExchange) {
         return BindingBuilder.bind(listingEventsQueue).to(domainExchange).with("rental.reservation-requested.v1");
@@ -144,6 +147,7 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(listingEventsDlq).to(deadLetterExchange).with(QUEUE_LISTING_EVENTS_DLQ);
     }
 
+    // Notification Queue
     @Bean
     public Binding bindNotificationEvents(Queue notificationEventsQueue, TopicExchange domainExchange) {
         return BindingBuilder.bind(notificationEventsQueue).to(domainExchange).with("*.verified.v1");
@@ -159,9 +163,26 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(notificationEventsDlq).to(deadLetterExchange).with(QUEUE_NOTIFICATION_EVENTS_DLQ);
     }
 
+
+    // Rental Workflow Events Queue
     @Bean
     public Binding bindRentalWorkflow(Queue rentalWorkflowQueue, TopicExchange domainExchange) {
         return BindingBuilder.bind(rentalWorkflowQueue).to(domainExchange).with("listing.reserved.v1");
+    }
+
+    @Bean
+    public Binding bindRentalReservationRejected(Queue rentalWorkflowQueue, TopicExchange domainExchange) {
+        return BindingBuilder.bind(rentalWorkflowQueue).to(domainExchange).with("listing.reservation-rejected.v1");
+    }
+
+    @Bean
+    public Binding bindRentalPaymentSucceeded(Queue rentalWorkflowQueue, TopicExchange domainExchange) {
+        return BindingBuilder.bind(rentalWorkflowQueue).to(domainExchange).with("payment.succeeded.v1");
+    }
+
+    @Bean
+    public Binding bindRentalPaymentFailed(Queue rentalWorkflowQueue, TopicExchange domainExchange) {
+        return BindingBuilder.bind(rentalWorkflowQueue).to(domainExchange).with("payment.failed.v1");
     }
 
     @Bean
@@ -172,7 +193,12 @@ public class RabbitMqConfig {
     // JSON Message Converter
     @Bean
     public MessageConverter jsonMessageConverter() {
-        return new JacksonJsonMessageConverter();
+        JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
+        DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
+        typeMapper.setTrustedPackages("*");
+        typeMapper.setTypePrecedence(JacksonJavaTypeMapper.TypePrecedence.INFERRED);
+        converter.setJavaTypeMapper(typeMapper);
+        return converter;
     }
 
     @Bean
@@ -181,5 +207,16 @@ public class RabbitMqConfig {
         template.setMessageConverter(jsonMessageConverter);
         template.setMandatory(true);
         return template;
+    }
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory) {
+        SimpleRabbitListenerContainerFactory factory =
+                new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(new SimpleMessageConverter());
+        factory.setAcknowledgeMode(MANUAL);
+        return factory;
     }
 }

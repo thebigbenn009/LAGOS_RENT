@@ -42,7 +42,7 @@ public class Tenancy {
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "emd_date", nullable = false)
+    @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
     @Column(nullable = false)

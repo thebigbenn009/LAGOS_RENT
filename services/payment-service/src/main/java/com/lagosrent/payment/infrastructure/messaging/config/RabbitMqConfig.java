@@ -3,6 +3,8 @@ package com.lagosrent.payment.infrastructure.messaging.config;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.DefaultJacksonJavaTypeMapper;
+import org.springframework.amqp.support.converter.JacksonJavaTypeMapper;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -52,8 +54,8 @@ public class RabbitMqConfig {
 
     // Binding to receive rental.reservation-confirmed.v1
     @Bean
-    public Binding bindRentalReservationConfirmed(Queue paymentEventQueue, TopicExchange domainExchange) {
-        return BindingBuilder.bind(paymentEventQueue)
+    public Binding bindRentalReservationConfirmed(Queue paymentEventsQueue, TopicExchange domainExchange) {
+        return BindingBuilder.bind(paymentEventsQueue)
                 .to(domainExchange)
                 .with("rental.reservation-confirmed.v1");
     }
@@ -68,7 +70,22 @@ public class RabbitMqConfig {
     // JSON Message Converter
     @Bean
     public MessageConverter jsonMessageConverter() {
-        return new JacksonJsonMessageConverter();
+        JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
+        DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
+        typeMapper.setTrustedPackages("*");
+        typeMapper.setTypePrecedence(JacksonJavaTypeMapper.TypePrecedence.INFERRED);
+        converter.setJavaTypeMapper(typeMapper);
+        return converter;
+    }
+
+    @Bean
+    public org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory) {
+        org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory factory =
+                new org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(new org.springframework.amqp.support.converter.SimpleMessageConverter());
+        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        return factory;
     }
 
     @Bean
