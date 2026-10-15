@@ -5,6 +5,7 @@ import com.lagosrent.account.api.dto.VerificationCaseResponse;
 import com.lagosrent.account.api.dto.VerificationStatusResponse;
 import com.lagosrent.account.application.exception.ResourceNotFoundException;
 import com.lagosrent.account.domain.model.*;
+import com.lagosrent.account.infrastructure.messaging.payload.LandlordVerifiedPayload;
 import com.lagosrent.account.infrastructure.persistence.AccountRepository;
 import com.lagosrent.account.infrastructure.persistence.AdminAuditRecordRepository;
 import com.lagosrent.account.infrastructure.persistence.LandlordProfileRepository;
@@ -13,9 +14,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+
+import static com.lagosrent.account.domain.model.VerificationStatus.*;
+import static com.lagosrent.account.infrastructure.messaging.config.RabbitMqConfig.ROUTING_KEY_LANDLORD_VERIFIED;
+import static java.time.Instant.now;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class VerificationService {
     private final LandlordProfileRepository landlordProfileRepository;
     private final VerificationCaseRepository verificationCaseRepository;
     private final AdminAuditRecordRepository auditRecordRepository;
+    private final OutboxService outboxService;
 
     @Transactional
     public VerificationCaseResponse submitVerificationCase(String keycloakUserId, SubmitVerificationCaseRequest request) {
@@ -41,8 +46,8 @@ public class VerificationService {
         );
 
         // Update profile status to PENDING if not already verified
-        if (landlordProfile.getVerificationStatus() != VerificationStatus.VERIFIED) {
-            landlordProfile.setVerificationStatus(VerificationStatus.PENDING);
+        if (landlordProfile.getVerificationStatus() != VERIFIED) {
+            landlordProfile.setVerificationStatus(PENDING);
             landlordProfileRepository.save(landlordProfile);
         }
         return VerificationCaseResponse.from(verificationCaseRepository.save(verificationCase));
@@ -70,13 +75,13 @@ public class VerificationService {
                 .orElseThrow(() -> new ResourceNotFoundException("VerificationCase", caseId));
 
         vc.setStatus(VerificationCaseStatus.APPROVED);
-        vc.setReviewedAt(Instant.now());
+        vc.setReviewedAt(now());
         vc.setReviewedBy(adminKeycloakId);
         vc.setAdminNotes(reason);
 
         LandlordProfile profile = vc.getLandlordProfile();
         String previousState = profile.getVerificationStatus().name();
-        profile.setVerificationStatus(VerificationStatus.VERIFIED);
+        profile.setVerificationStatus(VERIFIED);
         landlordProfileRepository.save(profile);
 
         auditRecordRepository.save(new AdminAuditRecord(
@@ -86,9 +91,24 @@ public class VerificationService {
                 profile.getId().toString(),
                 reason,
                 previousState,
-                VerificationStatus.VERIFIED.name()
+                VERIFIED.name()
         ));
-
+        // Atomically record outbox event within the same database transaction
+        outboxService.recordEvent(
+                "landlord",
+                profile.getAccount().getKeycloakUserId(),
+                1L,
+                ROUTING_KEY_LANDLORD_VERIFIED,
+                new LandlordVerifiedPayload(
+                        profile.getAccount().getKeycloakUserId(),
+                        profile.getId(),
+                        vc.getDocumentType().name(),
+                        adminKeycloakId,
+                        now()
+                ),
+                null,
+                null
+        );
         return VerificationCaseResponse.from(verificationCaseRepository.save(vc));
     }
 
@@ -98,13 +118,13 @@ public class VerificationService {
                 .orElseThrow(() -> new ResourceNotFoundException("VerificationCase", caseId));
 
         vc.setStatus(VerificationCaseStatus.REJECTED);
-        vc.setReviewedAt(Instant.now());
+        vc.setReviewedAt(now());
         vc.setReviewedBy(adminKeycloakId);
         vc.setAdminNotes(reason);
 
         LandlordProfile profile = vc.getLandlordProfile();
         String previousState = profile.getVerificationStatus().name();
-        profile.setVerificationStatus(VerificationStatus.REJECTED);
+        profile.setVerificationStatus(REJECTED);
         landlordProfileRepository.save(profile);
 
         auditRecordRepository.save(new AdminAuditRecord(
@@ -114,7 +134,7 @@ public class VerificationService {
                 profile.getId().toString(),
                 reason,
                 previousState,
-                VerificationStatus.REJECTED.name()
+                REJECTED.name()
         ));
 
         return VerificationCaseResponse.from(verificationCaseRepository.save(vc));
