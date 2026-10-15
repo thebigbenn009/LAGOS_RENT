@@ -3,3 +3,4 @@ notes/
 .idea/
 target/
 handbook/
+.env
