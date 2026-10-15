@@ -12,5 +12,6 @@ public record PaymentSucceededPayload(
         BigDecimal amount,
         String currency,
         String providerReference,
+        String receiptNumber,
         Instant paidAt
 ) {}
