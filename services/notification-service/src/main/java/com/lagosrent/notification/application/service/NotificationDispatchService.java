@@ -47,7 +47,7 @@ public class NotificationDispatchService {
 
         // 1. Idempotency Check: Have this notification been delivered to this event?
         Optional<NotificationDelivery> existingDelivery =
-                deliveryRepository.findByEventIdAndTemplateCodeAndReceipt(eventId, templateCode, recipientEmail);
+                deliveryRepository.findByEventIdAndTemplateCodeAndRecipient(eventId, templateCode, recipientEmail);
 
         if (existingDelivery.isPresent() && existingDelivery.get().getStatus() == SENT) {
             log.info("Duplicate notification detected and safely ignored: event={}, template={}, recipient={}",

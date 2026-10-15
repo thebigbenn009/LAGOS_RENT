@@ -1,11 +1,10 @@
 -- Phase 18: Notification Service Schema Initialization
 -- Database: notification_db
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Note: PostgreSQL 13+ natively supports gen_random_uuid() without uuid-ossp extension
 
 -- 1. Notification Templates Table (Versioned, parameter-driven email/SMS copy)
 CREATE TABLE IF NOT EXISTS notification_templates (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     template_code VARCHAR(100) NOT NULL UNIQUE,
     channel VARCHAR(20) NOT NULL DEFAULT 'EMAIL',
     subject_template TEXT NOT NULL,
@@ -18,7 +17,7 @@ CREATE TABLE IF NOT EXISTS notification_templates (
 
 -- 2. Notification Deliveries Table (Immutable audit ledger of every dispatch attempt)
 CREATE TABLE IF NOT EXISTS notification_deliveries (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL,
     template_code VARCHAR(100) NOT NULL,
     recipient VARCHAR(255) NOT NULL,
@@ -41,7 +40,7 @@ CREATE INDEX idx_deliveries_status ON notification_deliveries(status);
 
 -- 3. Notification Preferences Table (User opt-ins/opt-outs)
 CREATE TABLE IF NOT EXISTS notification_preferences (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_keycloak_id VARCHAR(64) NOT NULL UNIQUE,
     email_enabled BOOLEAN NOT NULL DEFAULT true,
     sms_enabled BOOLEAN NOT NULL DEFAULT true,
