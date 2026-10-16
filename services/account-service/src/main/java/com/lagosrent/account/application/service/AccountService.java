@@ -1,9 +1,6 @@
 package com.lagosrent.account.application.service;
 
-import com.lagosrent.account.api.dto.LandlordProfileResponse;
-import com.lagosrent.account.api.dto.TenantProfileResponse;
-import com.lagosrent.account.api.dto.UpdateLandlordProfileRequest;
-import com.lagosrent.account.api.dto.UpdateTenantProfileRequest;
+import com.lagosrent.account.api.dto.*;
 import com.lagosrent.account.application.exception.ResourceNotFoundException;
 import com.lagosrent.account.domain.model.Account;
 import com.lagosrent.account.domain.model.LandlordProfile;
@@ -39,7 +36,7 @@ public class AccountService {
         return accountRepository.findByKeycloakUserId(keycloakUserId).orElseGet(() -> {
             Account newAccount = new Account(
                     keycloakUserId,
-                    email != null ? email : keycloakUserId + "@placeholder.com",
+                    email,
                     firstName,
                     lastName
             );
@@ -116,5 +113,19 @@ public class AccountService {
         return savedListingRepository.findByAccountId(account.getId())
                 .stream().map(SavedListing::getId)
                 .toList();
+    }
+
+    public UserProfileResponse getUserProfileByKeycloakId(String keycloakId) {
+        Account account = getAccountByKeyCloakId(keycloakId);
+        String firstName = account.getFirstName();
+        String lastName = account.getLastName();
+        String fullName = (firstName + " " + lastName).trim();
+
+        return new UserProfileResponse(
+                account.getKeycloakUserId(),
+                account.getEmail(),
+                fullName,
+                account.getPhone()
+        );
     }
 }

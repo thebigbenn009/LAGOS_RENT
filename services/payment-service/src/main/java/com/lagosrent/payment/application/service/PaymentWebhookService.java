@@ -164,6 +164,7 @@ public class PaymentWebhookService {
                         amountPaid,
                         currency,
                         providerReference,
+                        receiptNumber,
                         now()
                 ),
                 null,

@@ -101,7 +101,7 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 
 - Phase: 17 complete — Distributed Rental-Payment Saga orchestration fully implemented and verified end-to-end (ADR-009 orchestrator, atomic listing reservation, auto-provisioned payable via RabbitMQ, HMAC signed webhook settlement, tenancy activation in rental_db, and final inventory transition to RENTED)
 - Last exit criterion met: Phase 17 — Distributed saga verified end-to-end across rental-service, listing-service, and payment-service via RabbitMQ with zero 2PC transactions
-- Open: Phase 18 — Notification Service (Email/SMS notifications for saga events, tenancy confirmations, and payment receipts)
-- Branch: `rental-payment-saga`
-- Next: Commit Phase 17 changes, merge PR into main, and begin Phase 18 planning
+- Open: Phase 18 — Implement Notification Service (Asynchronous provider integration, Resend & AWS SES adapters, versioned templates, delivery ledger, strict event deduplication)
+- Branch: `feat/notification-service`
+- Next: Branch off main, copy notes from `notes/18-notification-service/` to `services/notification-service/`, execute atomic commits, and run `test-notification-workflow.sh`
 

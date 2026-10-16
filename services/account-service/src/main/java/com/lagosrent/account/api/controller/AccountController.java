@@ -208,4 +208,9 @@ public class AccountController {
     ) {
         return ResponseEntity.ok(accountService.getSavedListing(jwt.getSubject()));
     }
+
+    @GetMapping("/user/{keycloakId}")
+    public ResponseEntity<UserProfileResponse> getUserProfileByKeycloakId(@PathVariable String keycloakId) {
+        return ResponseEntity.ok(accountService.getUserProfileByKeycloakId(keycloakId));
+    }
 }
