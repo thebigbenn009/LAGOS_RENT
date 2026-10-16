@@ -105,9 +105,9 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - `docker compose up` — local platform (Phase 5)
 - _(add more here as they're established)_
 
-- Phase: 18 complete — Notification Service implemented with multi-provider email adapter (Mock, Resend, SES), versioned templates, delivery audit ledger, and strict idempotency across all domain lifecycle events
-- Last exit criterion met: Phase 18 — End-to-end notification dispatch verified across all business events with duplicate suppression
-- Open: Phase 19 — Implement admin operations without an Admin Service (dashboard as privileged client preserving service ownership, audit trail, optimistic concurrency)
-- Branch: `feat/admin-operations`
-- Next: Create `notes/19-admin-operations/00-plan.md`, review admin APIs across services, and implement operational audit and control endpoints
+- Phase: 17 complete — Distributed Rental-Payment Saga orchestration fully implemented and verified end-to-end (ADR-009 orchestrator, atomic listing reservation, auto-provisioned payable via RabbitMQ, HMAC signed webhook settlement, tenancy activation in rental_db, and final inventory transition to RENTED)
+- Last exit criterion met: Phase 17 — Distributed saga verified end-to-end across rental-service, listing-service, and payment-service via RabbitMQ with zero 2PC transactions
+- Open: Phase 18 — Implement Notification Service (Asynchronous provider integration, Resend & AWS SES adapters, versioned templates, delivery ledger, strict event deduplication)
+- Branch: `feat/notification-service`
+- Next: Branch off main, copy notes from `notes/18-notification-service/` to `services/notification-service/`, execute atomic commits, and run `test-notification-workflow.sh`
 
