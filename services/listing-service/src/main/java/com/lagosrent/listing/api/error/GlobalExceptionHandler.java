@@ -104,7 +104,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex,
                                                                 HttpServletRequest request) {
         String correlationId = request.getHeader(CORRELATION_ID_HEADER);
-        log.error("Unhandled exception processing request [{}]: ", request.getRequestURI(), ex);
+
+        // Print the full stack trace tagged with the correlation ID to server logs
+        log.error("Unhandled internal server error on [{}], correlationId [{}]:",
+                request.getRequestURI(), correlationId, ex);
 
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
