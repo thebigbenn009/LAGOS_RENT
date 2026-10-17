@@ -74,6 +74,10 @@ public class GlobalExceptionHandler {
         String correlationId = request.getHeader(CORRELATION_ID_HEADER);
         log.warn("Access denied for request [{}]: {}", request.getRequestURI(), ex.getMessage());
 
+        // Print the full stack trace tagged with the correlation ID to server logs
+        log.error("Unhandled internal server error on [{}], correlationId [{}]:",
+                request.getRequestURI(), correlationId, ex);
+
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.FORBIDDEN.value(),
                 "Forbidden",

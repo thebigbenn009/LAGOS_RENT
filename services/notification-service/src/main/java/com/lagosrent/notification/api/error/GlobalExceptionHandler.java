@@ -2,12 +2,15 @@ package com.lagosrent.notification.api.error;
 
 import com.lagosrent.notification.application.exception.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
@@ -24,7 +27,7 @@ public class GlobalExceptionHandler {
                 correlationId
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                             .body(error);
+                .body(error);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -39,13 +42,32 @@ public class GlobalExceptionHandler {
                 correlationId
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                             .body(error);
+                .body(error);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        String correlationId = request.getHeader(CORRELATION_ID_HEADER);
+        ErrorResponse error = ErrorResponse.of(
+                HttpStatus.FORBIDDEN.value(),
+                "Forbidden",
+                "You do not have permission to perform this action.",
+                "FORBIDDEN",
+                request.getRequestURI(),
+                correlationId
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex,
                                                                 HttpServletRequest request) {
         String correlationId = request.getHeader(CORRELATION_ID_HEADER);
+
+        // Print the full stack trace tagged with the correlation ID to server logs
+        log.error("Unhandled internal server error on [{}], correlationId [{}]:",
+                request.getRequestURI(), correlationId, ex);
+
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
@@ -55,6 +77,6 @@ public class GlobalExceptionHandler {
                 correlationId
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                             .body(error);
+                .body(error);
     }
 }

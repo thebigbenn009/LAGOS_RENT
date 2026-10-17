@@ -88,7 +88,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
         String correlationId = request.getHeader(CORRELATION_ID_HEADER);
-        log.warn("Illegal state for request [{}]: {}", request.getRequestURI(), ex.getMessage());
+
+        // Print the full stack trace tagged with the correlation ID to server logs
+        log.error("Unhandled internal server error on [{}], correlationId [{}]:",
+                request.getRequestURI(), correlationId, ex);
+
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.BAD_REQUEST.value(),
                 "Invalid State Transition",
@@ -105,6 +109,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex,
                                                                 HttpServletRequest request) {
         String correlationId = request.getHeader(CORRELATION_ID_HEADER);
+
+        // Print the full stack trace tagged with the correlation ID to server logs
+        log.error("Unhandled internal server error on [{}], correlationId [{}]:",
+                request.getRequestURI(), correlationId, ex);
+
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
