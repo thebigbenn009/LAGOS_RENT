@@ -82,6 +82,22 @@ Full list: `docs/implementation-guide.md` §3. The ones that bite most often:
   - **Zero Placeholder / Dummy Fallback Names**: NEVER use placeholder names or fallback defaults (e.g., `?: "Landlord Partner"`, `?: "Tenant"`, `?: "Valued Customer"`, dummy titles, mock defaults) just to make code succeed in local development.
   - **Fail Fast**: If an entity or user profile lacks required business fields (e.g., first name, last name, email), the system MUST fail fast by throwing an explicit domain/validation exception or rejecting the event. Never paper over missing or corrupt data with artificial strings. Code must strictly adhere to production invariants.
 
+## Common AI Mistakes to Avoid & Strict Production Alternatives
+
+Every AI assistant working on this codebase must strictly internalize and avoid these three systemic mistakes:
+
+### 1. Relying on Generic Training Boilerplate / Defaults (e.g., `guest:guest`, default ports)
+* **The Anti-Pattern:** Hallucinating or copy-pasting textbook defaults (e.g. `guest:guest` for RabbitMQ, `admin:admin`, generic URLs) without inspecting the repository. This causes API calls to fail silently or with 401 Unauthorized, returning `null` in `jq` and invalidating user verification.
+* **Strict Alternative:** Every credential, port, and configuration value MUST be verified against `docker-compose.yml`, `lagos_rent_config/`, or existing service configurations BEFORE presenting it. If a service/container is running, test commands in the shell to ensure they succeed with HTTP 200 before writing them in notes.
+
+### 2. Papering Over Errors with Placeholder Strings (e.g., `?: "unknown"`, `?: "Tenant"`)
+* **The Anti-Pattern:** Using defensive ternary defaults like `context.getLastThrowable() != null ? context.getLastThrowable().getMessage() : "unknown"` to prevent NPEs. This produces useless production logs like `Retrying event processing due to: unknown`, destroying observability for the on-call engineer.
+* **Strict Alternative:** Adhere to enterprise error observability. In Spring Retry / Resilience4j, register dedicated listener hooks (e.g., `RetryListener.onError`) where the `throwable` is non-null. Always capture and log the full exception class, message, and stack trace (`throwable.getClass().getName()`, `throwable.getMessage()`, `throwable`). Never swallow root causes.
+
+### 3. Tunnel-Vision Code Suggestions that Violate Established Invariants
+* **The Anti-Pattern:** Focusing exclusively on a single new pattern (e.g. bounded retries) and arbitrarily altering an earlier, established platform contract (e.g. switching `acknowledge-mode: manual` to `auto` or dropping `Channel channel`) just to make the snippet easier to implement.
+* **Strict Alternative:** Always cross-reference earlier architectural agreements (`docs/architecture/`, `notes/11-rabbitmq-and-event-contracts/`, etc.). New resilience patterns MUST compose cleanly ON TOP of existing platform invariants (e.g., building bounded in-consumer retries that preserve manual acks and dead-letter routing), never by silently dismantling prior architectural guarantees.
+
 ## Subagents
 
 - **debug** — when a prompt starts with "I have a bug", hand off to the `debug-helper`
@@ -105,9 +121,10 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - `docker compose up` — local platform (Phase 5)
 - _(add more here as they're established)_
 
-- Phase: 17 complete — Distributed Rental-Payment Saga orchestration fully implemented and verified end-to-end (ADR-009 orchestrator, atomic listing reservation, auto-provisioned payable via RabbitMQ, HMAC signed webhook settlement, tenancy activation in rental_db, and final inventory transition to RENTED)
-- Last exit criterion met: Phase 17 — Distributed saga verified end-to-end across rental-service, listing-service, and payment-service via RabbitMQ with zero 2PC transactions
-- Open: Phase 18 — Implement Notification Service (Asynchronous provider integration, Resend & AWS SES adapters, versioned templates, delivery ledger, strict event deduplication)
-- Branch: `feat/notification-service`
-- Next: Branch off main, copy notes from `notes/18-notification-service/` to `services/notification-service/`, execute atomic commits, and run `test-notification-workflow.sh`
+- Phase: 19 complete — Decentralized admin operations implemented across domain services (account, listing, rental, payment, notification) preserving service autonomy, with segmented gateway routing, audit trails, and optimistic concurrency
+- Last exit criterion met: Phase 19 — Privileged admin operations functional via Gateway without central admin service
+- Open: Phase 20 — Add resilience deliberately (Resilience4j circuit breakers, timeouts, bulkheads, rate limiters, bounded retries, DLQ recovery, and chaos testing)
+- Branch: `feature/resilience-deliberate`
+- Next: Author notes/20-resilience-deliberately/00-plan-and-core-concepts.md and explain resilience engineering from first principles
+
 
