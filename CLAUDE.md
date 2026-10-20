@@ -99,6 +99,28 @@ Every AI assistant working on this codebase must strictly internalize and avoid 
 * **The Anti-Pattern:** Focusing exclusively on a single new pattern (e.g. bounded retries) and arbitrarily altering an earlier, established platform contract (e.g. switching `acknowledge-mode: manual` to `auto` or dropping `Channel channel`) just to make the snippet easier to implement.
 * **Strict Alternative:** Always cross-reference earlier architectural agreements (`docs/architecture/`, `notes/11-rabbitmq-and-event-contracts/`, etc.). New resilience patterns MUST compose cleanly ON TOP of existing platform invariants (e.g., building bounded in-consumer retries that preserve manual acks and dead-letter routing), never by silently dismantling prior architectural guarantees.
 
+## Verified Local Platform State & Seeded Test Identities (Strict Non-Negotiable)
+
+To prevent AI amnesia and fake data generation after session restarts or context compactions, the assistant must use these verified constants:
+
+- **PostgreSQL Container (`lagos-rent-postgres`):** Port `5432`, Superuser: `postgres`, Superpass: `postgres`
+  - Core databases: `account_db`, `listing_db`, `rental_db`, `payment_db`, `search_db`, `notification_db`
+- **RabbitMQ Container (`lagos-rent-rabbitmq`):** AMQP `:5672`, Management UI `:15672`
+  - Credentials: User: `lagos_user`, Password: `lagos_rabbit_password`
+- **Verified Seeded Tenant Identity:**
+  - `keycloak_user_id`: `cc15287b-2af6-49fb-9ad7-9b30e1c57484`
+  - Email: `tenant@example.com`, Name: `Tenant User`
+- **Verified Seeded Landlord Identity:**
+  - `keycloak_user_id`: `818746e8-5729-4aa5-91fc-a99199dbd2aa`
+  - Email: `landlord@example.com`, Name: `Landlord User`
+- **Pre-Flight Test Identity Rule:** NEVER invent synthetic placeholder strings (e.g., `"test-tenant-id"`). Any event published in chaos testing or runbooks MUST use the verified seeded IDs above so that downstream queries (e.g., `AccountClient` -> `account-service`) resolve successfully with HTTP 200 instead of HTTP 404.
+
+## Context Window & Session Management (80% Threshold Alert)
+
+- **80% Context Warning Mandate:** The assistant must actively monitor conversation token consumption. When conversation history approaches **80% of context window capacity** (before automated lossy compaction occurs), the assistant MUST explicitly notify the user:
+  > *"Context window is approaching 80% capacity. To prevent lossy compaction and agent amnesia, commit current work to git and start a fresh session for the next phase."*
+- **Phase Scoping:** Threads should be scoped per Phase. When a phase is completed, the user should be guided to commit changes, update `Current status` in `CLAUDE.md`, and start a fresh chat thread.
+
 ## Subagents
 
 - **debug** — when a prompt starts with "I have a bug", hand off to the `debug-helper`
