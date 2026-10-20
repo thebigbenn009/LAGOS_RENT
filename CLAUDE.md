@@ -75,6 +75,7 @@ Full list: `docs/implementation-guide.md` §3. The ones that bite most often:
   - **Edge Gateway Token Propagation**: Always include `-H "Authorization: Bearer $TOKEN"` on API Gateway routes (`:8080`) since Gateway enforces authentication on all non-public routes.
   - **Zero `!` in Double Quotes**: NEVER output shell commands containing exclamation marks `!` inside double quotes (`"..."`). In macOS Zsh/Bash, `!` triggers history expansion, swallowing quotes and hanging the shell. Use single quotes `'...'` or omit `!` entirely.
   - Format all JSON API responses with `jq .` so the user can inspect every field and status code clearly.
+  - **Always Quote `jq` Filters in Single Quotes**: In macOS Zsh, square brackets `[...]` (like `[0]`) trigger pattern/glob expansion unless quoted. Writing `jq .measurements[0].value` crashes with `zsh: no matches found`. ALWAYS wrap jq filters in single quotes: `jq '.measurements[0].value'`.
 - **Database Migrations & UUID Standard (Strict Non-Negotiable)**:
   - Always use `gen_random_uuid()` for generating UUID primary keys in PostgreSQL Flyway migration files (`DEFAULT gen_random_uuid()`).
   - NEVER use `uuid_generate_v4()` or require `CREATE EXTENSION "uuid-ossp"`. In PostgreSQL 13+, `gen_random_uuid()` is built into the core runtime and avoids needing superuser extension privileges in managed production databases (AWS RDS, GCP Cloud SQL).
