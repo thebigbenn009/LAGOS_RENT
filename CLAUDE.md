@@ -146,8 +146,22 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 
 - Phase: 19 complete — Decentralized admin operations implemented across domain services (account, listing, rental, payment, notification) preserving service autonomy, with segmented gateway routing, audit trails, and optimistic concurrency
 - Last exit criterion met: Phase 19 — Privileged admin operations functional via Gateway without central admin service
-- Open: Phase 20 — Add resilience deliberately (Resilience4j circuit breakers, timeouts, bulkheads, rate limiters, bounded retries, DLQ recovery, and chaos testing)
-- Branch: `feature/resilience-deliberate`
-- Next: Author notes/20-resilience-deliberately/00-plan-and-core-concepts.md and explain resilience engineering from first principles
+- Active Phase: Phase 20 — Add resilience deliberately
+  - Branch: `feature/resilience-deliberate`
+  - Notes Completed:
+    - `00-plan-and-core-concepts.md` (Resilience theory, 5 core patterns, Fallacies of Distributed Computing)
+    - `01-resilience4j-circuit-breakers-and-timeouts.md` (`resilience4j-spring-boot3:2.3.0`, Spring Cloud CircuitBreakerFactory, SimpleClientHttpRequestFactory timeouts, lagos_rent_config YAML)
+    - `02-bulkheads-and-thread-isolation.md` (Semaphore & ThreadPool bulkheads for Paystack & Resend)
+    - `03-rabbitmq-resilience-dlq-and-bounded-retries.md` (AcknowledgeMode.MANUAL, prefetch 10, in-consumer RetryTemplate with RetryListener.onError, DLQ routing via platform.dlx.v1)
+    - `04-chaos-testing-and-failure-recovery-guide.md` (Simulated failure scenarios, Actuator Prometheus metrics, DLQ inspection and Shovel redrive runbook)
+  - Next Immediate Task (Start of Fresh Session):
+    - Author `notes/20-resilience-deliberately/05-resilience4j-rate-limiting.md`:
+      - First principles of Rate Limiting (Token Bucket / Leaky Bucket).
+      - Inbound Gateway Rate Limiting vs Outbound 3rd-Party Quota Protection (protecting Paystack max req/s and Resend email quotas to prevent HTTP 429).
+      - Resilience4j RateLimiter YAML config in `lagos_rent_config/payment-service.yml` and `notification-service.yml`.
+      - Decorating `PaystackPaymentProvider.java` and `ResendEmailProvider.java`.
+      - Actuator metrics inspection (`/actuator/metrics/resilience4j.ratelimiter.available.permissions`).
+      - Fast-fail degraded response on `RequestNotPermitted`.
+    - After Note 05: Verify exit criteria, commit feature branch, merge to `main`, and advance to Phase 21.
 
 
