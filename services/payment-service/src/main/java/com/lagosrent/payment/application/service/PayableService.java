@@ -11,6 +11,7 @@ import com.lagosrent.payment.infrastructure.persistence.PaymentAttemptRepository
 import com.lagosrent.payment.infrastructure.provider.PaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,8 @@ public class PayableService {
     private final PayableRepository payableRepository;
     private final PaymentAttemptRepository attemptRepository;
     private final PaymentProvider paymentProvider;
+    @Value("${payment.checkout.callback-url}")
+    private String callbackUrl;
 
     @Transactional
     public PayableResponse createPayable(String tenantKeycloakId, CreatePayableRequest request) {
@@ -92,7 +95,7 @@ public class PayableService {
                 payable.getTotalAmount(),
                 payable.getCurrency(),
                 tenantEmail,
-                "http://localhost:8080/checkout/callback"
+                callbackUrl
         );
 
         PaymentInitResult initResult = paymentProvider.initializePayment(command);

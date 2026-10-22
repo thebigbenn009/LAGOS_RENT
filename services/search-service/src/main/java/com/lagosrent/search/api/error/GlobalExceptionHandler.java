@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = ErrorResponse.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                "An unexpected error occured. Please contact support.",
+                "An unexpected error occurred. Please contact support.",
                 "INTERNAL_SERVER_ERROR",
                 request.getRequestURI(),
                 correlationId

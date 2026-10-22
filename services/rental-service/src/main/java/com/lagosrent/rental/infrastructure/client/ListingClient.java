@@ -12,7 +12,7 @@ import java.util.UUID;
 public class ListingClient {
     private final RestClient restClient;
 
-    public ListingClient(@Value("${listing-service.url:http://localhost:8082}") String listingServiceUrl) {
+    public ListingClient(@Value("${listing-service.url}") String listingServiceUrl) {
         this.restClient = RestClient.builder()
                 .baseUrl(listingServiceUrl)
                 .build();
