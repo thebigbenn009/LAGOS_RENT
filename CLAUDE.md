@@ -82,6 +82,10 @@ Full list: `docs/implementation-guide.md` §3. The ones that bite most often:
 - **Production Standards & Fail-Fast Data Invariants (Strict Non-Negotiable)**:
   - **Zero Placeholder / Dummy Fallback Names**: NEVER use placeholder names or fallback defaults (e.g., `?: "Landlord Partner"`, `?: "Tenant"`, `?: "Valued Customer"`, dummy titles, mock defaults) just to make code succeed in local development.
   - **Fail Fast**: If an entity or user profile lacks required business fields (e.g., first name, last name, email), the system MUST fail fast by throwing an explicit domain/validation exception or rejecting the event. Never paper over missing or corrupt data with artificial strings. Code must strictly adhere to production invariants.
+- **External Library & Spring Boot Baseline Compatibility (Strict Non-Negotiable)**:
+  - When introducing, configuring, or diagnosing any external library or Spring Boot starter (e.g., Resilience4j, Flyway, Testcontainers, Spring Security OAuth2), ALWAYS inspect and verify its direct compatibility with the exact Spring Boot baseline used in this project (Spring Boot 4.1.x / Spring 7 / Micrometer 1.17+).
+  - External starters compiled for older generations (Spring Boot 2.x or 3.x) often break silently on Spring Boot 4 because of internal package restructuring (e.g., Actuator metrics auto-configuration moving from `org.springframework.boot.actuate.autoconfigure.metrics` to `org.springframework.boot.micrometer.metrics.autoconfigure`), resulting in skipped `@ConditionalOnBean` beans or failed `@AutoConfigureAfter` orders.
+  - Never assume an external starter's auto-configuration "just works" on Spring Boot 4. Always inspect class availability, bean registration lifecycles, and compatibility flags (such as `MeterBinder` bridges or legacy registration flags like `metrics.legacy.enabled: true`).
 
 ## Common AI Mistakes to Avoid & Strict Production Alternatives
 
@@ -103,17 +107,26 @@ Every AI assistant working on this codebase must strictly internalize and avoid 
 
 To prevent AI amnesia and fake data generation after session restarts or context compactions, the assistant must use these verified constants:
 
+- **Keycloak Container (`lagos-rent-keycloak`):** Port `8180`, Realm: `lagos-rent`, Client ID: `web-application`
+  - Token Endpoint: `http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token`
+  - Seeded Tenant: Username `tenant_test`, Password `Password123!`, Email: `tenant@example.com`, `keycloak_user_id`: `cc15287b-2af6-49fb-9ad7-9b30e1c57484`
+  - Seeded Landlord: Username `landlord_test`, Password `Password123!`, Email: `landlord@example.com`, `keycloak_user_id`: `818746e8-5729-4aa5-91fc-a99199dbd2aa`
+  - Seeded Admin: Username `admin_test`, Password `Password123!`, Email: `admin@example.com`
+  - **Canonical Token Acquisition Snippet (MANDATORY)**:
+    ```bash
+    TOKEN=$(curl -s -X POST 'http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token' \
+      -H 'Content-Type: application/x-www-form-urlencoded' \
+      -d 'client_id=web-application' \
+      -d 'grant_type=password' \
+      -d 'username=tenant_test' \
+      -d 'password=Password123!' | jq -r '.access_token')
+    ```
+  - **PROHIBITION:** NEVER invent `client_id=lagos-rent-cli`, `password=password`, or use email as username (`username=tenant@example.com`). The client ID is ALWAYS `web-application`, the username is `tenant_test`, and the password is `Password123!`.
 - **PostgreSQL Container (`lagos-rent-postgres`):** Port `5432`, Superuser: `postgres`, Superpass: `postgres`
   - Core databases: `account_db`, `listing_db`, `rental_db`, `payment_db`, `search_db`, `notification_db`
 - **RabbitMQ Container (`lagos-rent-rabbitmq`):** AMQP `:5672`, Management UI `:15672`
   - Credentials: User: `lagos_user`, Password: `lagos_rabbit_password`
-- **Verified Seeded Tenant Identity:**
-  - `keycloak_user_id`: `cc15287b-2af6-49fb-9ad7-9b30e1c57484`
-  - Email: `tenant@example.com`, Name: `Tenant User`
-- **Verified Seeded Landlord Identity:**
-  - `keycloak_user_id`: `818746e8-5729-4aa5-91fc-a99199dbd2aa`
-  - Email: `landlord@example.com`, Name: `Landlord User`
-- **Pre-Flight Test Identity Rule:** NEVER invent synthetic placeholder strings (e.g., `"test-tenant-id"`). Any event published in chaos testing or runbooks MUST use the verified seeded IDs above so that downstream queries (e.g., `AccountClient` -> `account-service`) resolve successfully with HTTP 200 instead of HTTP 404.
+- **Pre-Flight Test Identity Rule:** NEVER invent synthetic placeholder strings (e.g., `"test-tenant-id"`, `"lagos-rent-cli"`). Any event published in chaos testing or runbooks MUST use the verified seeded IDs and credentials above so that downstream queries and authentication succeed with HTTP 200.
 
 ## Context Window & Session Management (80% Threshold Alert)
 
@@ -149,19 +162,13 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - Active Phase: Phase 20 — Add resilience deliberately
   - Branch: `feature/resilience-deliberate`
   - Notes Completed:
-    - `00-plan-and-core-concepts.md` (Resilience theory, 5 core patterns, Fallacies of Distributed Computing)
+    - `00-plan-and-core-concepts.md` (Resilience theory, 6 core patterns, Fallacies of Distributed Computing)
     - `01-resilience4j-circuit-breakers-and-timeouts.md` (`resilience4j-spring-boot3:2.3.0`, Spring Cloud CircuitBreakerFactory, SimpleClientHttpRequestFactory timeouts, lagos_rent_config YAML)
     - `02-bulkheads-and-thread-isolation.md` (Semaphore & ThreadPool bulkheads for Paystack & Resend)
     - `03-rabbitmq-resilience-dlq-and-bounded-retries.md` (AcknowledgeMode.MANUAL, prefetch 10, in-consumer RetryTemplate with RetryListener.onError, DLQ routing via platform.dlx.v1)
     - `04-chaos-testing-and-failure-recovery-guide.md` (Simulated failure scenarios, Actuator Prometheus metrics, DLQ inspection and Shovel redrive runbook)
-  - Next Immediate Task (Start of Fresh Session):
-    - Author `notes/20-resilience-deliberately/05-resilience4j-rate-limiting.md`:
-      - First principles of Rate Limiting (Token Bucket / Leaky Bucket).
-      - Inbound Gateway Rate Limiting vs Outbound 3rd-Party Quota Protection (protecting Paystack max req/s and Resend email quotas to prevent HTTP 429).
-      - Resilience4j RateLimiter YAML config in `lagos_rent_config/payment-service.yml` and `notification-service.yml`.
-      - Decorating `PaystackPaymentProvider.java` and `ResendEmailProvider.java`.
-      - Actuator metrics inspection (`/actuator/metrics/resilience4j.ratelimiter.available.permissions`).
-      - Fast-fail degraded response on `RequestNotPermitted`.
-    - After Note 05: Verify exit criteria, commit feature branch, merge to `main`, and advance to Phase 21.
+    - `05-resilience4j-rate-limiting.md` (Rate limiting first principles, inbound vs outbound quota protection, Resilience4j RateLimiter decorators for Paystack & Resend, RequestNotPermitted fast-fail, Actuator metrics)
+  - Next Immediate Task:
+    - Verify Phase 20 exit criteria, commit feature branch `feature/resilience-deliberate`, merge to `main`, and advance to Phase 21.
 
 
