@@ -16,11 +16,11 @@ import static java.util.UUID.randomUUID;
 
 @Component
 @Slf4j
-@ConditionalOnProperty(name = "payment.provider.active", havingValue = "mock", matchIfMissing = true)
+@ConditionalOnProperty(name = "payment.provider.active", havingValue = "mock")
 public class MockPaystackPaymentProvider implements PaymentProvider {
     private final String secretKey;
 
-    public MockPaystackPaymentProvider(@Value("${payment.provider.paystack.secret-key:sk_test_lagos_rent_mock_secret_key}") String secretKey) {
+    public MockPaystackPaymentProvider(@Value("${payment.provider.paystack.secret-key}") String secretKey) {
         this.secretKey = secretKey;
     }
 

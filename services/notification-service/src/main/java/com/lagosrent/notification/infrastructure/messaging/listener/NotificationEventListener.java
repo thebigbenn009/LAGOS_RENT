@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -25,6 +26,7 @@ public class NotificationEventListener {
     private final NotificationDispatchService dispatchService;
     private final AccountClient accountClient;
     private final ObjectMapper objectMapper;
+    private final RetryTemplate consumerRetryTemplate;
 
     @RabbitListener(queues = "notification.events.v1", containerFactory = "rabbitListenerContainerFactory")
     public void onDomainEvent(Message rawMessage, Channel channel) throws Exception {
@@ -32,27 +34,39 @@ public class NotificationEventListener {
         String body = new String(rawMessage.getBody());
 
         try {
-            JsonNode root = objectMapper.readTree(body);
-            String eventIdStr = root.path("eventId").asString();
-            UUID eventId = eventIdStr.isBlank() ? randomUUID() : fromString(eventIdStr);
-            String eventType = root.path("eventType").asString();
-            JsonNode payload = root.path("payload");
+            // Execute message processing within bounded retry template (3 attempts with backoff)
+            consumerRetryTemplate.execute(context -> {
+                processEvent(body);
+                return null;
+            });
 
-            log.info("Notification Service received event: type={}, id={}", eventType, eventId);
-
-            switch (eventType) {
-                case "payment.succeeded.v1" -> handlePaymentSucceeded(eventId, payload);
-                case "tenancy.confirmed.v1" -> handleTenancyConfirmed(eventId, payload);
-                case "rental.reservation-confirmed.v1" -> handleReservationConfirmed(eventId, payload);
-                case "landlord.verified.v1" -> handleLandlordVerified(eventId, payload);
-                default -> log.debug("Notification Service ignoring unhandled event type: {}", eventType);
-            }
-
+            // Explicitly manual ACK only after successful completion
             channel.basicAck(deliveryTag, false);
+            log.info("Message deliveryTag={} acknowledged successfully.", deliveryTag);
         }
         catch (Exception ex) {
-            log.error("Failed to process event in Notification Service: {}", ex.getMessage(), ex);
+            // Reject with requeue = false -> RabbitMQ automatically routes to notification.events.dlq
+            log.error("Event processing failed permanently. Dead-lettering deliveryTag={}. Root cause: [{}] {}",
+                    deliveryTag, ex.getClass().getName(), ex.getMessage(), ex);
             channel.basicNack(deliveryTag, false, false);
+        }
+    }
+
+    private void processEvent(String body) throws Exception {
+        JsonNode root = objectMapper.readTree(body);
+        String eventIdStr = root.path("eventId").asString();
+        UUID eventId = eventIdStr.isBlank() ? randomUUID() : fromString(eventIdStr);
+        String eventType = root.path("eventType").asString();
+        JsonNode payload = root.path("payload");
+
+        log.info("Notification Service received event: type={}, id={}", eventType, eventId);
+
+        switch (eventType) {
+            case "payment.succeeded.v1" -> handlePaymentSucceeded(eventId, payload);
+            case "tenancy.confirmed.v1" -> handleTenancyConfirmed(eventId, payload);
+            case "rental.reservation-confirmed.v1" -> handleReservationConfirmed(eventId, payload);
+            case "landlord.verified.v1" -> handleLandlordVerified(eventId, payload);
+            default -> log.debug("Notification Service ignoring unhandled event type: {}", eventType);
         }
     }
 

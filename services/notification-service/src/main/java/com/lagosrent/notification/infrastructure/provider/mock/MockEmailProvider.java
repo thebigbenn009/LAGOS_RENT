@@ -9,7 +9,7 @@ import static java.util.UUID.randomUUID;
 
 @Component
 @Slf4j
-@ConditionalOnProperty(name = "notification.provider.active", havingValue = "mock", matchIfMissing = true)
+@ConditionalOnProperty(name = "notification.provider.active", havingValue = "mock")
 public class MockEmailProvider implements EmailProvider {
     @Override
     public String getProviderName() {

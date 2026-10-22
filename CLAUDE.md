@@ -75,12 +75,64 @@ Full list: `docs/implementation-guide.md` §3. The ones that bite most often:
   - **Edge Gateway Token Propagation**: Always include `-H "Authorization: Bearer $TOKEN"` on API Gateway routes (`:8080`) since Gateway enforces authentication on all non-public routes.
   - **Zero `!` in Double Quotes**: NEVER output shell commands containing exclamation marks `!` inside double quotes (`"..."`). In macOS Zsh/Bash, `!` triggers history expansion, swallowing quotes and hanging the shell. Use single quotes `'...'` or omit `!` entirely.
   - Format all JSON API responses with `jq .` so the user can inspect every field and status code clearly.
+  - **Always Quote `jq` Filters in Single Quotes**: In macOS Zsh, square brackets `[...]` (like `[0]`) trigger pattern/glob expansion unless quoted. Writing `jq .measurements[0].value` crashes with `zsh: no matches found`. ALWAYS wrap jq filters in single quotes: `jq '.measurements[0].value'`.
 - **Database Migrations & UUID Standard (Strict Non-Negotiable)**:
   - Always use `gen_random_uuid()` for generating UUID primary keys in PostgreSQL Flyway migration files (`DEFAULT gen_random_uuid()`).
   - NEVER use `uuid_generate_v4()` or require `CREATE EXTENSION "uuid-ossp"`. In PostgreSQL 13+, `gen_random_uuid()` is built into the core runtime and avoids needing superuser extension privileges in managed production databases (AWS RDS, GCP Cloud SQL).
 - **Production Standards & Fail-Fast Data Invariants (Strict Non-Negotiable)**:
   - **Zero Placeholder / Dummy Fallback Names**: NEVER use placeholder names or fallback defaults (e.g., `?: "Landlord Partner"`, `?: "Tenant"`, `?: "Valued Customer"`, dummy titles, mock defaults) just to make code succeed in local development.
   - **Fail Fast**: If an entity or user profile lacks required business fields (e.g., first name, last name, email), the system MUST fail fast by throwing an explicit domain/validation exception or rejecting the event. Never paper over missing or corrupt data with artificial strings. Code must strictly adhere to production invariants.
+- **External Library & Spring Boot Baseline Compatibility (Strict Non-Negotiable)**:
+  - When introducing, configuring, or diagnosing any external library or Spring Boot starter (e.g., Resilience4j, Flyway, Testcontainers, Spring Security OAuth2), ALWAYS inspect and verify its direct compatibility with the exact Spring Boot baseline used in this project (Spring Boot 4.1.x / Spring 7 / Micrometer 1.17+).
+  - External starters compiled for older generations (Spring Boot 2.x or 3.x) often break silently on Spring Boot 4 because of internal package restructuring (e.g., Actuator metrics auto-configuration moving from `org.springframework.boot.actuate.autoconfigure.metrics` to `org.springframework.boot.micrometer.metrics.autoconfigure`), resulting in skipped `@ConditionalOnBean` beans or failed `@AutoConfigureAfter` orders.
+  - Never assume an external starter's auto-configuration "just works" on Spring Boot 4. Always inspect class availability, bean registration lifecycles, and compatibility flags (such as `MeterBinder` bridges or legacy registration flags like `metrics.legacy.enabled: true`).
+
+## Common AI Mistakes to Avoid & Strict Production Alternatives
+
+Every AI assistant working on this codebase must strictly internalize and avoid these three systemic mistakes:
+
+### 1. Relying on Generic Training Boilerplate / Defaults (e.g., `guest:guest`, default ports)
+* **The Anti-Pattern:** Hallucinating or copy-pasting textbook defaults (e.g. `guest:guest` for RabbitMQ, `admin:admin`, generic URLs) without inspecting the repository. This causes API calls to fail silently or with 401 Unauthorized, returning `null` in `jq` and invalidating user verification.
+* **Strict Alternative:** Every credential, port, and configuration value MUST be verified against `docker-compose.yml`, `lagos_rent_config/`, or existing service configurations BEFORE presenting it. If a service/container is running, test commands in the shell to ensure they succeed with HTTP 200 before writing them in notes.
+
+### 2. Papering Over Errors with Placeholder Strings (e.g., `?: "unknown"`, `?: "Tenant"`)
+* **The Anti-Pattern:** Using defensive ternary defaults like `context.getLastThrowable() != null ? context.getLastThrowable().getMessage() : "unknown"` to prevent NPEs. This produces useless production logs like `Retrying event processing due to: unknown`, destroying observability for the on-call engineer.
+* **Strict Alternative:** Adhere to enterprise error observability. In Spring Retry / Resilience4j, register dedicated listener hooks (e.g., `RetryListener.onError`) where the `throwable` is non-null. Always capture and log the full exception class, message, and stack trace (`throwable.getClass().getName()`, `throwable.getMessage()`, `throwable`). Never swallow root causes.
+
+### 3. Tunnel-Vision Code Suggestions that Violate Established Invariants
+* **The Anti-Pattern:** Focusing exclusively on a single new pattern (e.g. bounded retries) and arbitrarily altering an earlier, established platform contract (e.g. switching `acknowledge-mode: manual` to `auto` or dropping `Channel channel`) just to make the snippet easier to implement.
+* **Strict Alternative:** Always cross-reference earlier architectural agreements (`docs/architecture/`, `notes/11-rabbitmq-and-event-contracts/`, etc.). New resilience patterns MUST compose cleanly ON TOP of existing platform invariants (e.g., building bounded in-consumer retries that preserve manual acks and dead-letter routing), never by silently dismantling prior architectural guarantees.
+
+## Verified Local Platform State & Seeded Test Identities (Strict Non-Negotiable)
+
+To prevent AI amnesia and fake data generation after session restarts or context compactions, the assistant must use these verified constants:
+
+- **Keycloak Container (`lagos-rent-keycloak`):** Port `8180`, Realm: `lagos-rent`, Client ID: `web-application`
+  - Token Endpoint: `http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token`
+  - Seeded Tenant: Username `tenant_test`, Password `Password123!`, Email: `tenant@example.com`, `keycloak_user_id`: `cc15287b-2af6-49fb-9ad7-9b30e1c57484`
+  - Seeded Landlord: Username `landlord_test`, Password `Password123!`, Email: `landlord@example.com`, `keycloak_user_id`: `818746e8-5729-4aa5-91fc-a99199dbd2aa`
+  - Seeded Admin: Username `admin_test`, Password `Password123!`, Email: `admin@example.com`
+  - **Canonical Token Acquisition Snippet (MANDATORY)**:
+    ```bash
+    TOKEN=$(curl -s -X POST 'http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token' \
+      -H 'Content-Type: application/x-www-form-urlencoded' \
+      -d 'client_id=web-application' \
+      -d 'grant_type=password' \
+      -d 'username=tenant_test' \
+      -d 'password=Password123!' | jq -r '.access_token')
+    ```
+  - **PROHIBITION:** NEVER invent `client_id=lagos-rent-cli`, `password=password`, or use email as username (`username=tenant@example.com`). The client ID is ALWAYS `web-application`, the username is `tenant_test`, and the password is `Password123!`.
+- **PostgreSQL Container (`lagos-rent-postgres`):** Port `5432`, Superuser: `postgres`, Superpass: `postgres`
+  - Core databases: `account_db`, `listing_db`, `rental_db`, `payment_db`, `search_db`, `notification_db`
+- **RabbitMQ Container (`lagos-rent-rabbitmq`):** AMQP `:5672`, Management UI `:15672`
+  - Credentials: User: `lagos_user`, Password: `lagos_rabbit_password`
+- **Pre-Flight Test Identity Rule:** NEVER invent synthetic placeholder strings (e.g., `"test-tenant-id"`, `"lagos-rent-cli"`). Any event published in chaos testing or runbooks MUST use the verified seeded IDs and credentials above so that downstream queries and authentication succeed with HTTP 200.
+
+## Context Window & Session Management (80% Threshold Alert)
+
+- **80% Context Warning Mandate:** The assistant must actively monitor conversation token consumption. When conversation history approaches **80% of context window capacity** (before automated lossy compaction occurs), the assistant MUST explicitly notify the user:
+  > *"Context window is approaching 80% capacity. To prevent lossy compaction and agent amnesia, commit current work to git and start a fresh session for the next phase."*
+- **Phase Scoping:** Threads should be scoped per Phase. When a phase is completed, the user should be guided to commit changes, update `Current status` in `CLAUDE.md`, and start a fresh chat thread.
 
 ## Subagents
 
@@ -105,9 +157,18 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - `docker compose up` — local platform (Phase 5)
 - _(add more here as they're established)_
 
-- Phase: 17 complete — Distributed Rental-Payment Saga orchestration fully implemented and verified end-to-end (ADR-009 orchestrator, atomic listing reservation, auto-provisioned payable via RabbitMQ, HMAC signed webhook settlement, tenancy activation in rental_db, and final inventory transition to RENTED)
-- Last exit criterion met: Phase 17 — Distributed saga verified end-to-end across rental-service, listing-service, and payment-service via RabbitMQ with zero 2PC transactions
-- Open: Phase 18 — Implement Notification Service (Asynchronous provider integration, Resend & AWS SES adapters, versioned templates, delivery ledger, strict event deduplication)
-- Branch: `feat/notification-service`
-- Next: Branch off main, copy notes from `notes/18-notification-service/` to `services/notification-service/`, execute atomic commits, and run `test-notification-workflow.sh`
+- Phase: 19 complete — Decentralized admin operations implemented across domain services (account, listing, rental, payment, notification) preserving service autonomy, with segmented gateway routing, audit trails, and optimistic concurrency
+- Last exit criterion met: Phase 19 — Privileged admin operations functional via Gateway without central admin service
+- Active Phase: Phase 20 — Add resilience deliberately
+  - Branch: `feature/resilience-deliberate`
+  - Notes Completed:
+    - `00-plan-and-core-concepts.md` (Resilience theory, 6 core patterns, Fallacies of Distributed Computing)
+    - `01-resilience4j-circuit-breakers-and-timeouts.md` (`resilience4j-spring-boot3:2.3.0`, Spring Cloud CircuitBreakerFactory, SimpleClientHttpRequestFactory timeouts, lagos_rent_config YAML)
+    - `02-bulkheads-and-thread-isolation.md` (Semaphore & ThreadPool bulkheads for Paystack & Resend)
+    - `03-rabbitmq-resilience-dlq-and-bounded-retries.md` (AcknowledgeMode.MANUAL, prefetch 10, in-consumer RetryTemplate with RetryListener.onError, DLQ routing via platform.dlx.v1)
+    - `04-chaos-testing-and-failure-recovery-guide.md` (Simulated failure scenarios, Actuator Prometheus metrics, DLQ inspection and Shovel redrive runbook)
+    - `05-resilience4j-rate-limiting.md` (Rate limiting first principles, inbound vs outbound quota protection, Resilience4j RateLimiter decorators for Paystack & Resend, RequestNotPermitted fast-fail, Actuator metrics)
+  - Next Immediate Task:
+    - Verify Phase 20 exit criteria, commit feature branch `feature/resilience-deliberate`, merge to `main`, and advance to Phase 21.
+
 
