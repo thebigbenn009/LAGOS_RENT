@@ -75,6 +75,7 @@ Full list: `docs/implementation-guide.md` §3. The ones that bite most often:
   - **Edge Gateway Token Propagation**: Always include `-H "Authorization: Bearer $TOKEN"` on API Gateway routes (`:8080`) since Gateway enforces authentication on all non-public routes.
   - **Zero `!` in Double Quotes**: NEVER output shell commands containing exclamation marks `!` inside double quotes (`"..."`). In macOS Zsh/Bash, `!` triggers history expansion, swallowing quotes and hanging the shell. Use single quotes `'...'` or omit `!` entirely.
   - Format all JSON API responses with `jq .` so the user can inspect every field and status code clearly.
+  - **Zero Silent Command Execution (Strict Non-Negotiable)**: NEVER write snippets that assign command outputs to variables without immediately echoing and formatting the response (e.g., `echo "$RESPONSE" | jq .`). The developer must be able to visually inspect and verify every intermediate response.
   - **Always Quote `jq` Filters in Single Quotes**: In macOS Zsh, square brackets `[...]` (like `[0]`) trigger pattern/glob expansion unless quoted. Writing `jq .measurements[0].value` crashes with `zsh: no matches found`. ALWAYS wrap jq filters in single quotes: `jq '.measurements[0].value'`.
 - **Database Migrations & UUID Standard (Strict Non-Negotiable)**:
   - Always use `gen_random_uuid()` for generating UUID primary keys in PostgreSQL Flyway migration files (`DEFAULT gen_random_uuid()`).
@@ -103,13 +104,17 @@ Every AI assistant working on this codebase must strictly internalize and avoid 
 * **The Anti-Pattern:** Focusing exclusively on a single new pattern (e.g. bounded retries) and arbitrarily altering an earlier, established platform contract (e.g. switching `acknowledge-mode: manual` to `auto` or dropping `Channel channel`) just to make the snippet easier to implement.
 * **Strict Alternative:** Always cross-reference earlier architectural agreements (`docs/architecture/`, `notes/11-rabbitmq-and-event-contracts/`, etc.). New resilience patterns MUST compose cleanly ON TOP of existing platform invariants (e.g., building bounded in-consumer retries that preserve manual acks and dead-letter routing), never by silently dismantling prior architectural guarantees.
 
+### 4. Proposing Configuration Properties from Memory without Verifying Spring Boot 4 Metadata
+* **The Anti-Pattern:** Hallucinating or recalling configuration properties from memory or obsolete Spring Boot 2.x/3.x knowledge (e.g., using `management.otlp.tracing.endpoint` which was deprecated with level ERROR in Spring Boot 4) instead of verifying against the project baseline. This causes critical features to fail silently (e.g., OpenTelemetry spans being recorded in MDC logs but never exported to the OTel Collector or Tempo).
+* **Strict Alternative:** NEVER propose or write configuration properties from memory. ALWAYS inspect the actual JAR's configuration metadata (`unzip -p ~/.m2/repository/.../META-INF/spring-configuration-metadata.json | jq ...`) to verify the exact property name, deprecation status, and type definitions against the Spring Boot 4 baseline *before* recommending or authoring any configuration.
+
 ## Verified Local Platform State & Seeded Test Identities (Strict Non-Negotiable)
 
 To prevent AI amnesia and fake data generation after session restarts or context compactions, the assistant must use these verified constants:
 
 - **Keycloak Container (`lagos-rent-keycloak`):** Port `8180`, Realm: `lagos-rent`, Client ID: `web-application`
   - Token Endpoint: `http://localhost:8180/realms/lagos-rent/protocol/openid-connect/token`
-  - Seeded Tenant: Username `tenant_test`, Password `Password123!`, Email: `tenant@example.com`, `keycloak_user_id`: `cc15287b-2af6-49fb-9ad7-9b30e1c57484`
+  - Seeded Tenant: Username `tenant_test`, Password `Password123!`, Email: `tenant@example.com`, `keycloak_user_id`: `a7624ef5-2b0d-4348-a3ca-e4a60afef119`
   - Seeded Landlord: Username `landlord_test`, Password `Password123!`, Email: `landlord@example.com`, `keycloak_user_id`: `818746e8-5729-4aa5-91fc-a99199dbd2aa`
   - Seeded Admin: Username `admin_test`, Password `Password123!`, Email: `admin@example.com`
   - **Canonical Token Acquisition Snippet (MANDATORY)**:
@@ -157,18 +162,14 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - `docker compose up` — local platform (Phase 5)
 - _(add more here as they're established)_
 
-- Phase: 19 complete — Decentralized admin operations implemented across domain services (account, listing, rental, payment, notification) preserving service autonomy, with segmented gateway routing, audit trails, and optimistic concurrency
-- Last exit criterion met: Phase 19 — Privileged admin operations functional via Gateway without central admin service
-- Active Phase: Phase 20 — Add resilience deliberately
-  - Branch: `feature/resilience-deliberate`
+- Phase: 22 in progress — Build the Complete Test Strategy (Unit testing domain state machines, Testcontainers integration testing, Contract testing, Distributed E2E workflow, Mandatory failure & chaos tests)
+- Last exit criterion met: Phase 21 — Starting from a payment reference or correlation ID, an engineer can locate the HTTP trace, saga, RabbitMQ events, payment verification, and notification attempt across the entire platform
+- Active Phase: Phase 22 — Complete Test Strategy
   - Notes Completed:
-    - `00-plan-and-core-concepts.md` (Resilience theory, 6 core patterns, Fallacies of Distributed Computing)
-    - `01-resilience4j-circuit-breakers-and-timeouts.md` (`resilience4j-spring-boot3:2.3.0`, Spring Cloud CircuitBreakerFactory, SimpleClientHttpRequestFactory timeouts, lagos_rent_config YAML)
-    - `02-bulkheads-and-thread-isolation.md` (Semaphore & ThreadPool bulkheads for Paystack & Resend)
-    - `03-rabbitmq-resilience-dlq-and-bounded-retries.md` (AcknowledgeMode.MANUAL, prefetch 10, in-consumer RetryTemplate with RetryListener.onError, DLQ routing via platform.dlx.v1)
-    - `04-chaos-testing-and-failure-recovery-guide.md` (Simulated failure scenarios, Actuator Prometheus metrics, DLQ inspection and Shovel redrive runbook)
-    - `05-resilience4j-rate-limiting.md` (Rate limiting first principles, inbound vs outbound quota protection, Resilience4j RateLimiter decorators for Paystack & Resend, RequestNotPermitted fast-fail, Actuator metrics)
+    - `notes/22-complete-test-strategy/00-testing-first-principles-and-plan.md` (Testing first principles, Testing Pyramid vs. Honeycomb in microservices, 5 testing layers, risks, and 6-note roadmap)
+    - `notes/22-complete-test-strategy/01-unit-testing-domain-logic-and-state-machines.md` (Pure JUnit 5 + AssertJ domain unit tests: Listing state transitions & fee calculations, PriceSnapshot immutability & Reservation expiry, Payable states & Webhook amount validation)
   - Next Immediate Task:
-    - Verify Phase 20 exit criteria, commit feature branch `feature/resilience-deliberate`, merge to `main`, and advance to Phase 21.
+    - Note 02: Service Integration Tests with Testcontainers (PostgreSQL & RabbitMQ Testcontainers, @ServiceConnection, repository queries, outbox publisher, and transactional rollbacks).
+
 
 

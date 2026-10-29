@@ -1,19 +1,33 @@
 package com.lagosrent.rental.infrastructure.messaging.config;
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.*;
+import org.springframework.boot.amqp.autoconfigure.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.retry.RetryCallback;
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.RetryListener;
+import org.springframework.retry.support.RetryTemplate;
+import org.springframework.web.client.ResourceAccessException;
 
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
+import static java.time.Duration.ofMillis;
 import static org.springframework.amqp.core.AcknowledgeMode.MANUAL;
 
 @Configuration
+@Slf4j
 public class RabbitMqConfig {
     // 1. Exchanges
     public static final String DOMAIN_EXCHANGE = "platform.domain.v1";
@@ -206,17 +220,49 @@ public class RabbitMqConfig {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter);
         template.setMandatory(true);
+        template.setObservationEnabled(true);
         return template;
     }
 
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-            ConnectionFactory connectionFactory) {
-        SimpleRabbitListenerContainerFactory factory =
-                new SimpleRabbitListenerContainerFactory();
-        factory.setConnectionFactory(connectionFactory);
+            ConnectionFactory connectionFactory,
+            SimpleRabbitListenerContainerFactoryConfigurer configurer
+    ) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        configurer.configure(factory, connectionFactory);
         factory.setMessageConverter(new SimpleMessageConverter());
         factory.setAcknowledgeMode(MANUAL);
+        factory.setDefaultRequeueRejected(false);
+        factory.setObservationEnabled(true);
         return factory;
+    }
+
+    @Bean
+    public RetryTemplate consumerRetryTemplate() {
+        return RetryTemplate.builder()
+                .maxAttempts(3)
+                .exponentialBackoff(ofMillis(1000), 2.0, ofMillis(8000))
+                .retryOn(List.of(
+                        ResourceAccessException.class,
+                        ConnectException.class,
+                        SocketTimeoutException.class,
+                        TimeoutException.class, //  Handles Resilience4j TimeLimiter timeout!
+                        CallNotPermittedException.class
+                ))
+                .traversingCauses()
+                .withListener(new RetryListener() {
+                    @Override
+                    public <T, E extends Throwable> void onError(RetryContext context, RetryCallback<T, E> callback, Throwable throwable) {
+                        log.warn("Transient failure in event listener (attempt #{}/3. Root cause: [{}] {}",
+                                context.getRetryCount(),
+                                throwable.getClass().getName(),
+                                throwable.getMessage(),
+                                throwable
+                        );
+                    }
+                })
+                .build();
+
     }
 }

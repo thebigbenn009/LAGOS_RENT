@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# LAGOS RENT PLATFORM — SERVICE LOG VIEWER
+# Usage: ./logs <service-name>
+# Example: ./logs payment
+#          ./logs notification
+#          ./logs gateway
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/start-all-services.sh" logs "$@"

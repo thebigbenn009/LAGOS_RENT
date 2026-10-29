@@ -1,0 +1,39 @@
+apiVersion: 1
+
+datasources:
+  # 1. Prometheus Metrics Datasource (Default)
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+
+  # 2. Tempo Distributed Traces Datasource
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      httpMethod: GET
+      tracesToLogsV2:
+        datasourceUid: "Loki"
+        filterByTraceID: true
+        filterBySpanID: true
+        customQuery: true
+        query: '{$${__tags}} | json | traceId = "$${__trace.id}"'
+
+  # 3. Loki Structured Logs Datasource with Trace Linking
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    uid: "Loki"
+    jsonData:
+      derivedFields:
+        # Automatically detects traceId in JSON and creates a one-click button to Tempo!
+        - datasourceUid: "Tempo"
+          matcherRegex: '"traceId":"([a-f0-9]{32})"'
+          name: "TraceID"
+          url: "$${__value.raw}"

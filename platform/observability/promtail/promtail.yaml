@@ -1,0 +1,27 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: lagos-rent-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: lagos-rent
+          environment: local
+          __path__: /var/log/lagos-rent/*.log
+
+    pipeline_stages:
+      # Extract service name from filename: e.g. /var/log/lagos-rent/payment-service.log -> service="payment-service"
+      - regex:
+          source: filename
+          expression: ".*/(?P<service>[a-zA-Z0-9-]+)\\.log"
+      - labels:
+          service:

@@ -70,3 +70,94 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+  # ----------------------------------------------------------------------------
+  # OBSERVABILITY STACK
+  # ----------------------------------------------------------------------------
+
+  # 1. OpenTelemetry Collector (Ingests OTLP traces & metrics)
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    container_name: lagos-rent-otel-collector
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./platform/observability/otel-collector/config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver (Spring Boot exports here)
+    networks:
+      - lagos-rent-net
+    depends_on:
+      - tempo
+
+  # 2. Grafana Tempo (Distributed Tracing backend)
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: lagos-rent-tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./platform/observability/tempo/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200" # Tempo HTTP API
+    networks:
+      - lagos-rent-net
+
+  # 3. Prometheus (Metrics TSDB)
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    container_name: lagos-rent-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./platform/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - lagos-rent-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # 4. Grafana Loki (Log Aggregation)
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: lagos-rent-loki
+    command: [ "-config.file=/etc/loki/local-config.yaml" ]
+    volumes:
+      - ./platform/observability/loki/loki.yaml:/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - lagos-rent-net
+
+  # 5. Promtail (Log Shipper for .logs/)
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: lagos-rent-promtail
+    command: [ "-config.file=/etc/promtail/config.yaml" ]
+    volumes:
+      - ./platform/observability/promtail/promtail.yaml:/etc/promtail/config.yaml
+      - ./.logs:/var/log/lagos-rent:ro
+    networks:
+      - lagos-rent-net
+    depends_on:
+      - loki
+
+  # 6. Grafana Cockpit (Visualization)
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: lagos-rent-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./platform/observability/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    networks:
+      - lagos-rent-net
+    depends_on:
+      - prometheus
+      - tempo
+      - loki

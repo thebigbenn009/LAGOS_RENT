@@ -13,6 +13,8 @@ import org.springframework.context.annotation.Configuration;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.springframework.amqp.core.AcknowledgeMode.MANUAL;
+
 @Configuration
 public class RabbitMqConfig {
     // 1. Exchanges
@@ -84,7 +86,8 @@ public class RabbitMqConfig {
                 new org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(new org.springframework.amqp.support.converter.SimpleMessageConverter());
-        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        factory.setAcknowledgeMode(MANUAL);
+        factory.setObservationEnabled(true);
         return factory;
     }
 
@@ -93,6 +96,7 @@ public class RabbitMqConfig {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter);
         template.setMandatory(true);
+        template.setObservationEnabled(true);
         return template;
     }
 }
