@@ -14,6 +14,8 @@ import org.springframework.context.annotation.Configuration;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.springframework.amqp.core.AcknowledgeMode.MANUAL;
+
 @Configuration
 public class RabbitMqConfig {
     // 1. Exchanges
@@ -171,7 +173,7 @@ public class RabbitMqConfig {
     public Binding bindListingReleaseRequested(Queue listingEventsQueue, TopicExchange domainExchange) {
         return BindingBuilder.bind(listingEventsQueue).to(domainExchange).with("listing.release-requested.v1");
     }
-    
+
     @Bean
     public Binding bindRentalDlq(Queue rentalWorkflowDlq, TopicExchange deadLetterExchange) {
         return BindingBuilder.bind(rentalWorkflowDlq).to(deadLetterExchange).with(QUEUE_RENTAL_WORKFLOW_DLQ);
@@ -193,7 +195,8 @@ public class RabbitMqConfig {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(new org.springframework.amqp.support.converter.SimpleMessageConverter());
-        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        factory.setAcknowledgeMode(MANUAL);
+        factory.setObservationEnabled(true);
         return factory;
     }
 
@@ -202,6 +205,7 @@ public class RabbitMqConfig {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter);
         template.setMandatory(true);
+        template.setObservationEnabled(true);
         return template;
     }
 }

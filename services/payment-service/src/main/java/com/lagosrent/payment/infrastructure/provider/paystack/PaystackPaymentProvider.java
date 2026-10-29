@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
-import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -27,6 +26,7 @@ import java.util.HexFormat;
 import java.util.Map;
 
 import static java.math.BigDecimal.valueOf;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 @Component
 @Slf4j
@@ -60,7 +60,7 @@ public class PaystackPaymentProvider implements PaymentProvider {
                 .requestFactory(factory)
                 .baseUrl(baseUrl)
                 .defaultHeader("Authorization", "Bearer " + secretKey)
-                .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader("Content-Type", APPLICATION_JSON_VALUE)
                 .build();
     }
 

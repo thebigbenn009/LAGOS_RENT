@@ -158,6 +158,18 @@
       <version>2.3.0</version>
     </dependency>
 
+    <!-- Spring Boot 4 Official OpenTelemetry & Micrometer Tracing Starter -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-opentelemetry</artifactId>
+    </dependency>
+
+
+    <!-- Exposes /actuator/prometheus endpoint for Prometheus scraping -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
   </dependencies>
   <dependencyManagement>
     <dependencies>

@@ -6,3 +6,4 @@ handbook/
 .env
 AUDIT_PRODUCTION_READINESS.md
 logs/
+.logs/
