@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ListingPublishedEventV1",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "aggregateType",
+    "aggregateId",
+    "aggregateVersion",
+    "occurredAt",
+    "producer",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "type": "string",
+      "const": "listing.published.v1"
+    },
+    "aggregateType": {
+      "type": "string",
+      "const": "listing"
+    },
+    "aggregateId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "producer": {
+      "type": "string",
+      "const": "listing-service"
+    },
+    "correlationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "causationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "listingId",
+        "landlordKeycloakId",
+        "propertyId",
+        "rentalUnitId",
+        "title",
+        "rentAmount",
+        "rentPeriod",
+        "moveInTotal",
+        "state",
+        "lga",
+        "area",
+        "unitType",
+        "bedrooms",
+        "bathrooms"
+      ],
+      "properties": {
+        "listingId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "landlordKeycloakId": {
+          "type": "string"
+        },
+        "propertyId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rentalUnitId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rentAmount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rentPeriod": {
+          "type": "string",
+          "enum": [
+            "MONTHLY",
+            "QUARTERLY",
+            "YEARLY"
+          ]
+        },
+        "moveInTotal": {
+          "type": "number",
+          "minimum": 0
+        },
+        "availableFrom": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": "string"
+        },
+        "lga": {
+          "type": "string"
+        },
+        "area": {
+          "type": "string"
+        },
+        "landmark": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "latitude": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "longitude": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unitType": {
+          "type": "string"
+        },
+        "bedrooms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bathrooms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "toilets": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "sizeSqMeters": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "floorNumber": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "fees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "feeType",
+              "amount",
+              "recipient",
+              "frequency",
+              "isRefundable",
+              "explanation"
+            ],
+            "properties": {
+              "feeType": {
+                "type": "string",
+                "enum": [
+                  "RENT",
+                  "CAUTION_DEPOSIT",
+                  "SERVICE_CHARGE",
+                  "LEGAL_AND_COUNSEL",
+                  "AGENCY",
+                  "OTHER"
+                ]
+              },
+              "amount": {
+                "type": "number",
+                "minimum": 0
+              },
+              "recipient": {
+                "type": "string",
+                "enum": [
+                  "LANDLORD",
+                  "AGENT",
+                  "PROPERTY_MANAGER",
+                  "PLATFORM"
+                ]
+              },
+              "frequency": {
+                "type": "string",
+                "enum": [
+                  "ONE_OFF",
+                  "MONTHLY",
+                  "QUARTERLY",
+                  "BI_ANNUALLY",
+                  "ANNUALLY"
+                ]
+              },
+              "isRefundable": {
+                "type": "boolean"
+              },
+              "explanation": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "media": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "mediaType",
+              "s3Key",
+              "filename",
+              "orderIndex",
+              "isPrimary"
+            ],
+            "properties": {
+              "mediaType": {
+                "type": "string"
+              },
+              "s3Key": {
+                "type": "string"
+              },
+              "filename": {
+                "type": "string"
+              },
+              "orderIndex": {
+                "type": "integer"
+              },
+              "caption": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "isPrimary": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

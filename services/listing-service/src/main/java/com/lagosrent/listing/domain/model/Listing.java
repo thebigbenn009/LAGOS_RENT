@@ -12,6 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static com.lagosrent.listing.domain.model.ListingStatus.DRAFT;
+import static java.time.Instant.now;
+
 @Entity
 @Table(name = "listings")
 @Getter
@@ -37,7 +40,7 @@ public class Listing {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ListingStatus status = ListingStatus.DRAFT;
+    private ListingStatus status = DRAFT;
 
     @Column(name = "rent_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal rentAmount;
@@ -61,10 +64,10 @@ public class Listing {
     private Long version;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt = Instant.now();
+    private Instant createdAt = now();
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt = Instant.now();
+    private Instant updatedAt = now();
 
     public Listing(RentalUnit rentalUnit, String landlordKeycloakId, String title, String description, BigDecimal rentAmount, LocalDate availableFrom) {
         this.rentalUnit = rentalUnit;
@@ -74,7 +77,12 @@ public class Listing {
         this.rentAmount = rentAmount;
         this.availableFrom = availableFrom;
         this.moveInTotal = rentAmount;
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
+        this.createdAt = now();
+        this.updatedAt = now();
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = now();
     }
 }

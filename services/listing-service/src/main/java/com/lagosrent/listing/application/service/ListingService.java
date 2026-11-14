@@ -155,7 +155,7 @@ public class ListingService {
                 null
         );
 
-        return ListingResponse.from(listingRepository.save(listing));
+        return ListingResponse.from(savedListing);
     }
 
     @Transactional(readOnly = true)
@@ -180,6 +180,10 @@ public class ListingService {
 
         if (!listing.getLandlordKeycloakId().equals(landlordKeycloakId)) {
             throw new IllegalArgumentException("You do not own this listing");
+        }
+
+        if (listing.getStatus() != ListingStatus.DRAFT && listing.getStatus() != ListingStatus.CHANGES_REQUESTED) {
+            throw new IllegalStateException("Only DRAFT or CHANGES_REQUESTED listings can be modified");
         }
 
         ListingMedia media = new ListingMedia(

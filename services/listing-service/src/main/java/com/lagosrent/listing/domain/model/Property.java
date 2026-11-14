@@ -37,7 +37,7 @@ public class Property {
     @Column(name = "address_line1", nullable = false)
     private String addressLine1;
 
-    @Column(name = "address_line2", nullable = false)
+    @Column(name = "address_line2")
     private String addressLine2;
 
     @Column(nullable = false)

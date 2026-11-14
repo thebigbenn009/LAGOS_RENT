@@ -162,14 +162,18 @@ Spring Cloud Config data (`docs/architecture/architecture.md` §22). Decide wher
 - `docker compose up` — local platform (Phase 5)
 - _(add more here as they're established)_
 
-- Phase: 22 in progress — Build the Complete Test Strategy (Unit testing domain state machines, Testcontainers integration testing, Contract testing, Distributed E2E workflow, Mandatory failure & chaos tests)
-- Last exit criterion met: Phase 21 — Starting from a payment reference or correlation ID, an engineer can locate the HTTP trace, saga, RabbitMQ events, payment verification, and notification attempt across the entire platform
-- Active Phase: Phase 22 — Complete Test Strategy
+- Phase: 22 completed — Build the Complete Test Strategy (Unit testing domain state machines, Testcontainers integration testing, Contract testing, Distributed E2E workflow, Mandatory failure & chaos tests)
+- Last exit criterion met: Phase 22 — "The system recovers without silent data corruption. Critical tests run automatically in CI, with slower chaos tests available on demand or nightly."
+- Active Phase: Phase 22 Complete -> Ready for Review & Phase 23 (Implement CI/CD)
   - Notes Completed:
     - `notes/22-complete-test-strategy/00-testing-first-principles-and-plan.md` (Testing first principles, Testing Pyramid vs. Honeycomb in microservices, 5 testing layers, risks, and 6-note roadmap)
     - `notes/22-complete-test-strategy/01-unit-testing-domain-logic-and-state-machines.md` (Pure JUnit 5 + AssertJ domain unit tests: Listing state transitions & fee calculations, PriceSnapshot immutability & Reservation expiry, Payable states & Webhook amount validation)
+    - `notes/22-complete-test-strategy/02-service-integration-tests-with-testcontainers.md` (Testcontainers with PostgreSQL & RabbitMQ, @ServiceConnection auto-configuration, atomic conditional updates in ListingRepository, PostgreSQL native FOR UPDATE SKIP LOCKED in OutboxEventRepository, and asynchronous OutboxPublisher polling with Awaitility)
+    - `notes/22-complete-test-strategy/03-contract-testing-http-and-event-schemas.md` (Contract testing first principles, WireMock HTTP consumer & provider verification, canonical JSON Schema validation for RabbitMQ platform.domain.v1 events, tolerant readers, and additive evolution)
+    - `notes/22-complete-test-strategy/04-distributed-end-to-end-workflow-testing.md` (Distributed E2E testing first principles, 11-stage complete lifecycle flight, bounded polling resilience, zero pre-existing state assumptions, and full Grafana Tempo distributed trace correlation)
+    - `notes/22-complete-test-strategy/05-mandatory-failure-and-chaos-testing.md` (Mandatory failure & chaos testing, 12 architecture failure scenarios from docs/architecture/architecture.md §24, outbox crashes, broker outages, idempotency replay, DLQ routing, and Phase 22 exit criteria verification)
   - Next Immediate Task:
-    - Note 02: Service Integration Tests with Testcontainers (PostgreSQL & RabbitMQ Testcontainers, @ServiceConnection, repository queries, outbox publisher, and transactional rollbacks).
+    - Review Phase 22 deliverables, commit changes to `feature/complete-test`, merge into `main`, and transition to Phase 23 (Implement CI/CD).
 
 
 

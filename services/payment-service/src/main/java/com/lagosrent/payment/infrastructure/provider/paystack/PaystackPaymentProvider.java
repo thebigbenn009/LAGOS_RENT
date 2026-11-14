@@ -63,7 +63,7 @@ public class PaystackPaymentProvider implements PaymentProvider {
                 .defaultHeader("Content-Type", APPLICATION_JSON_VALUE)
                 .build();
     }
-
+ 
     @Override
     public String getProviderName() {
         return "PAYSTACK";

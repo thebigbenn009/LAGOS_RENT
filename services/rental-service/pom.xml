@@ -134,6 +134,12 @@
       <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.wiremock</groupId>
+      <artifactId>wiremock-standalone</artifactId>
+      <scope>test</scope>
+    </dependency>
+
     <!-- Spring Boot 4 Official OpenTelemetry & Micrometer Tracing Starter -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

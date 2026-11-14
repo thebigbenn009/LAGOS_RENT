@@ -81,6 +81,10 @@ public class AdminListingService {
             throw new IllegalStateException("Listing has been modified since it was loaded");
         }
 
+        if (listing.getStatus() != ListingStatus.SUBMITTED_FOR_REVIEW) {
+            throw new IllegalStateException("Only SUBMITTED_FOR_REVIEW listings can have changes requested");
+        }
+
         String previousState = listing.getStatus().name();
         listing.setStatus(ListingStatus.CHANGES_REQUESTED);
 
@@ -114,6 +118,10 @@ public class AdminListingService {
             throw new IllegalStateException("Listing has been modified since it was loaded");
         }
 
+        if (listing.getStatus() != ListingStatus.SUBMITTED_FOR_REVIEW) {
+            throw new IllegalStateException("Only SUBMITTED_FOR_REVIEW listings can be rejected");
+        }
+
         String previousState = listing.getStatus().name();
         listing.setStatus(ListingStatus.REJECTED);
 
@@ -143,6 +151,10 @@ public class AdminListingService {
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
 
+        if (listing.getStatus() != ListingStatus.PUBLISHED) {
+            throw new IllegalStateException("Only PUBLISHED listings can be suspended");
+        }
+        
         String previousState = listing.getStatus().name();
         listing.setStatus(ListingStatus.SUSPENDED);
 
