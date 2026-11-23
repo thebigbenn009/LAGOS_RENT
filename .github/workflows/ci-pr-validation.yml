@@ -127,13 +127,14 @@ jobs:
         run: docker build -t "lagos-rent/${{ matrix.service }}:pr-check" "services/${{ matrix.service }}"
 
       - name: Scan Container Image (OS + Maven SBOM) with Trivy (Fail on Fixable CRITICAL CVEs)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: "lagos-rent/${{ matrix.service }}:pr-check"
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --format table \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --severity CRITICAL \
+            "lagos-rent/${{ matrix.service }}:pr-check"
 
       - name: Upload Failsafe Integration Reports & CycloneDX SBOM
         if: always()
