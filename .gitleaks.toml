@@ -1,0 +1,25 @@
+title = "Lagos Rent Platform — Gitleaks Secret Scanning Policy"
+
+[extend]
+# Inherit all built-in Gitleaks rules (AWS, GitHub, Private Keys, JWTs, JDBC URLs)
+useDefault = true
+
+[[rules]]
+id = "paystack-secret-key"
+description = "Paystack Live or Test Secret API Key"
+regex = '''sk_(live|test)_[0-9a-zA-Z]{20,}'''
+tags = ["key", "paystack", "payment"]
+
+[[rules]]
+id = "resend-api-key"
+description = "Resend Email API Key"
+regex = '''re_[0-9a-zA-Z_]{20,}'''
+tags = ["key", "resend", "notification"]
+
+[allowlist]
+description = "Allow template files, local Keycloak realm seed, and test fixtures"
+paths = [
+  '''^\.env\.example$''',
+  '''^platform/keycloak/realm-export\.json$''',
+  '''^services/.*/src/test/.*'''
+]

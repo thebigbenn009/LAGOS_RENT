@@ -1,0 +1,144 @@
+name: CI — Pull Request Validation & Nightly Full Build
+
+on:
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================================
+  # JOB 0: Gitleaks Secret Scan (Blocks committed API keys, passwords, private keys)
+  # ============================================================================
+  secret-scan:
+    name: Secret Scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks with .gitleaks.toml policy
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  # ============================================================================
+  # JOB 1: Detect which of the 9 microservices changed
+  # ============================================================================
+  detect-changes:
+    name: Detect Changed Microservices
+    runs-on: ubuntu-latest
+    outputs:
+      service_count: ${{ steps.filter.outputs.service_count }}
+      matrix_json: ${{ steps.filter.outputs.matrix_json }}
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine target services
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Scheduled or manual run: selecting all 9 microservices"
+            echo "service_count=9" >> "$GITHUB_OUTPUT"
+            echo 'matrix_json=["config-server","discovery-service","api-gateway","account-service","listing-service","rental-service","payment-service","search-service","notification-service"]' >> "$GITHUB_OUTPUT"
+          else
+            ./platform/scripts/detect-changed-services.sh "origin/${{ github.base_ref }}" | tee -a "$GITHUB_OUTPUT"
+          fi
+
+  # ============================================================================
+  # JOB 2: Fast Unit & Contract Tests + JaCoCo Coverage (No Docker needed)
+  # ============================================================================
+  unit-and-contract-tests:
+    name: Unit & Contract Tests (${{ matrix.service }})
+    needs: [ secret-scan, detect-changes ]
+    if: ${{ needs.detect-changes.outputs.service_count != '0' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.matrix_json) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 and cache Maven dependencies
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Run Enforcer, Unit Tests, Contract Tests & JaCoCo Report
+        run: mvn -B -pl "services/${{ matrix.service }}" test
+
+      - name: Upload JUnit & JaCoCo Coverage Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-and-coverage-report-${{ matrix.service }}
+          path: |
+            services/${{ matrix.service }}/target/surefire-reports/*.xml
+            services/${{ matrix.service }}/target/site/jacoco/**
+          if-no-files-found: ignore
+
+  # ============================================================================
+  # JOB 3: Testcontainers Integration Tests, SBOM, Docker Build & Trivy CVE Scan
+  # ============================================================================
+  integration-and-docker-build:
+    name: Integration, Image & CVE Scan (${{ matrix.service }})
+    needs: [ detect-changes, unit-and-contract-tests ]
+    if: ${{ needs.detect-changes.outputs.service_count != '0' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.matrix_json) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 and cache Maven dependencies
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Package JAR, Generate CycloneDX SBOM & Run Testcontainers Integration Tests
+        run: mvn -B -pl "services/${{ matrix.service }}" verify -Dsurefire.skip=true
+
+      - name: Build Multi-Stage Docker Image
+        run: docker build -t "lagos-rent/${{ matrix.service }}:pr-check" "services/${{ matrix.service }}"
+
+      - name: Scan Container Image (OS + Maven SBOM) with Trivy (Fail on Fixable CRITICAL CVEs)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "lagos-rent/${{ matrix.service }}:pr-check"
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Failsafe Integration Reports & CycloneDX SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-and-sbom-${{ matrix.service }}
+          path: |
+            services/${{ matrix.service }}/target/failsafe-reports/*.xml
+            services/${{ matrix.service }}/target/classes/META-INF/sbom/application.cdx.json
+          if-no-files-found: ignore
