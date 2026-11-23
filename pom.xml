@@ -18,10 +18,27 @@
 
   <name>lagos-rent-parent</name>
   <description>Lagos Rent Platform — Root Parent and Aggregator POM</description>
-
+  <distributionManagement>
+    <repository>
+      <id>lagos-rent-nexus-releases</id>
+      <name>Lagos Rent Nexus Releases</name>
+      <url>${nexus.url}/repository/maven-releases/</url>
+    </repository>
+    <snapshotRepository>
+      <id>lagos-rent-nexus-snapshots</id>
+      <name>Lagos Rent Nexus Snapshots</name>
+      <url>${nexus.url}/repository/maven-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
   <properties>
     <java.version>21</java.version>
     <spring-cloud.version>2025.1.3</spring-cloud.version>
+    <jacoco.version>0.8.12</jacoco.version>
+    <nexus.url>http://localhost:8091</nexus.url>
+    <!-- Patch CVE-2026-65182, CVE-2026-65637, CVE-2026-65905, CVE-2026-68525 flagged by Trivy -->
+    <tomcat.version>11.0.25</tomcat.version>
+    <!-- Patch CRITICAL CVEs flagged by Trivy across embedded Tomcat and Eureka FreeMarker -->
+    <freemarker.version>2.3.35</freemarker.version>
   </properties>
 
   <modules>
@@ -44,6 +61,20 @@
         <version>${spring-cloud.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <!-- WireMock 3.x Standalone for HTTP Consumer Contract Stubs (Shaded Jetty to prevent Spring Boot Jetty 12 conflicts) -->
+      <dependency>
+        <groupId>org.wiremock</groupId>
+        <artifactId>wiremock-standalone</artifactId>
+        <version>3.12.1</version>
+        <scope>test</scope>
+      </dependency>
+      <!-- NetworkNT JSON Schema Validator for RabbitMQ Event Contracts -->
+      <dependency>
+        <groupId>com.networknt</groupId>
+        <artifactId>json-schema-validator</artifactId>
+        <version>1.5.6</version>
+        <scope>test</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -80,9 +111,133 @@
           </annotationProcessorPaths>
         </configuration>
       </plugin>
+
+      <!-- 1. SUREFIRE: Runs fast Unit & Contract tests during 'mvn test' -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <includes>
+            <include>**/*Test.java</include>
+          </includes>
+          <excludes>
+            <!-- Exclude Testcontainers & full-context boot tests from the fast unit phase -->
+            <exclude>**/*IntegrationTest.java</exclude>
+            <exclude>**/*IT.java</exclude>
+            <exclude>**/*ApplicationTests.java</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+
+      <!-- 2. FAILSAFE: Runs Testcontainers Integration tests during 'mvn verify' -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <includes>
+            <include>**/*IntegrationTest.java</include>
+            <include>**/*IT.java</include>
+          </includes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- 3. ENFORCER: Require Java 21, Maven 3.9+, and ban cross-service dependencies -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce-platform-guardrails</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[21,)</version>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[3.9.0,)</version>
+                </requireMavenVersion>
+                <bannedDependencies>
+                  <searchTransitive>false</searchTransitive>
+                  <excludes>
+                    <!-- No microservice may depend on another com.lagosrent module -->
+                    <exclude>com.lagosrent:*</exclude>
+                  </excludes>
+                  <message>Architecture Guardrail Violation: Microservices must not depend on other
+                    com.lagosrent modules (docs/architecture/implementation-guide.md Rule 2).
+                  </message>
+                </bannedDependencies>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- 4. JACOCO: Generate HTML and XML test coverage reports -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <!-- Attaches the coverage agent to the JVM before tests run -->
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <!-- Generates target/site/jacoco/index.html after 'mvn test' -->
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- 5. GIT COMMIT METADATA: Generates target/classes/git.properties for /actuator/info -->
+      <plugin>
+        <groupId>io.github.git-commit-id</groupId>
+        <artifactId>git-commit-id-maven-plugin</artifactId>
+        <configuration>
+          <!-- Point to the monorepo root .git folder so '-pl services/<svc>' always finds it -->
+          <dotGitDirectory>${maven.multiModuleProjectDirectory}/.git</dotGitDirectory>
+          <verbose>false</verbose>
+          <!-- Do not fail builds if running inside a Docker build stage without .git -->
+          <failOnNoGitDirectory>false</failOnNoGitDirectory>
+        </configuration>
+      </plugin>
+
+      <!-- 6. SBOM GENERATION: Produces target/classes/META-INF/sbom/application.cdx.json -->
+      <plugin>
+        <groupId>org.cyclonedx</groupId>
+        <artifactId>cyclonedx-maven-plugin</artifactId>
+      </plugin>
+
+      <!-- 7. SPRING BOOT: Repackages executable JAR + writes META-INF/build-info.properties -->
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>build-info</id>
+            <goals>
+              <goal>build-info</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

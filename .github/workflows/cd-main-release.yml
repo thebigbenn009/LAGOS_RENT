@@ -1,0 +1,117 @@
+name: CD — Main Branch Package, Push & Deployment Evidence
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ============================================================================
+  # JOB 1: Detect changed services on this push to main
+  # ============================================================================
+  detect-changes:
+    name: Detect Services to Release
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_json: ${{ steps.filter.outputs.matrix_json }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Determine services changed in this merge
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo 'matrix_json=["config-server","discovery-service","api-gateway","account-service","listing-service","rental-service","payment-service","search-service","notification-service"]' >> "$GITHUB_OUTPUT"
+          else
+            ./platform/scripts/detect-changed-services.sh "HEAD~1" | tee -a "$GITHUB_OUTPUT"
+          fi
+
+  # ============================================================================
+  # JOB 2: Build, Push Immutable SHA Image to GHCR & Export Digest
+  # ============================================================================
+  package-and-push:
+    name: Package & Push (${{ matrix.service }})
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.matrix_json) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 and cache Maven dependencies
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Package executable JAR + git.properties + CycloneDX SBOM
+        run: mvn -B -s .mvn/ci-settings.xml -pl "services/${{ matrix.service }}" package -DskipTests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (ghcr.io)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push immutable SHA-tagged image to GHCR
+        id: build_push
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/lagos-rent/${{ matrix.service }}:sha-${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/lagos-rent/${{ matrix.service }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Record pushed image digest for Deployment Evidence
+        run: |
+          mkdir -p digests
+          echo "${{ steps.build_push.outputs.digest }}" > "digests/${{ matrix.service }}.digest"
+
+      - name: Upload service digest and SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-metadata-${{ matrix.service }}
+          path: |
+            digests/${{ matrix.service }}.digest
+            services/${{ matrix.service }}/target/classes/META-INF/sbom/application.cdx.json
+
+  # ============================================================================
+  # JOB 3: Publish Phase 23 Deployment Evidence Manifest
+  # ============================================================================
+  publish-evidence:
+    name: Publish Deployment Evidence
+    needs: [ package-and-push ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate Deployment Evidence Manifest (Markdown + JSON)
+        run: |
+          ./platform/scripts/generate-deployment-evidence.sh "dev" "ghcr.io/${{ github.repository_owner }}/lagos-rent"
+          cat target/deployment-evidence/deployment-evidence.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Archive Deployment Evidence Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-evidence-${{ github.sha }}
+          path: target/deployment-evidence/**

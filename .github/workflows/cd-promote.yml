@@ -1,0 +1,116 @@
+name: CD — Environment Promotion (Staging -> Production)
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Microservice to promote (e.g. listing-service, payment-service)'
+        required: true
+        default: 'listing-service'
+        type: choice
+        options:
+          - config-server
+          - discovery-service
+          - api-gateway
+          - account-service
+          - listing-service
+          - rental-service
+          - payment-service
+          - search-service
+          - notification-service
+      image_digest:
+        description: 'Exact immutable sha256 digest (e.g. sha256:9d4e...) or sha-<commit> tag from Deployment Evidence'
+        required: true
+        type: string
+      config_revision:
+        description: 'Verified lagos_rent_config Git commit SHA for this release'
+        required: true
+        default: 'main'
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ============================================================================
+  # STAGE 1: Promote Exact Image Digest to STAGING & Run Smoke Checks
+  # ============================================================================
+  promote-to-staging:
+    name: Promote ${{ inputs.service }} to Staging
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry (ghcr.io)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify immutable image exists in registry & tag as :staging
+        run: |
+          IMAGE_REPO="ghcr.io/${{ github.repository_owner }}/lagos-rent/${{ inputs.service }}"
+          if [[ "${{ inputs.image_digest }}" == sha256:* ]]; then
+            SOURCE_REF="${IMAGE_REPO}@${{ inputs.image_digest }}"
+          else
+            SOURCE_REF="${IMAGE_REPO}:${{ inputs.image_digest }}"
+          fi
+          echo "Promoting immutable source artifact: ${SOURCE_REF}"
+          docker buildx imagetools create -t "${IMAGE_REPO}:staging" "${SOURCE_REF}"
+
+      - name: Record Staging Promotion Evidence
+        run: |
+          cat <<SUMMARY >> "$GITHUB_STEP_SUMMARY"
+          ### Staging Promotion Complete
+          - **Service:** \`${{ inputs.service }}\`
+          - **Promoted Artifact:** \`${{ inputs.image_digest }}\`
+          - **Config Repo Revision:** \`${{ inputs.config_revision }}\`
+          - **Promoted By:** \`${{ github.actor }}\`
+          SUMMARY
+
+  # ============================================================================
+  # STAGE 2: Manual Approval Gate -> Promote Exact Same Digest to PRODUCTION
+  # ============================================================================
+  promote-to-production:
+    name: Promote ${{ inputs.service }} to Production
+    needs: [ promote-to-staging ]
+    runs-on: ubuntu-latest
+    # In GitHub Settings -> Environments -> 'production', enable "Required reviewers"
+    # so this job pauses until an authorized engineer clicks Approve!
+    environment:
+      name: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry (ghcr.io)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote exact same digest to :production tag
+        run: |
+          IMAGE_REPO="ghcr.io/${{ github.repository_owner }}/lagos-rent/${{ inputs.service }}"
+          if [[ "${{ inputs.image_digest }}" == sha256:* ]]; then
+            SOURCE_REF="${IMAGE_REPO}@${{ inputs.image_digest }}"
+          else
+            SOURCE_REF="${IMAGE_REPO}:${{ inputs.image_digest }}"
+          fi
+          docker buildx imagetools create -t "${IMAGE_REPO}:production" "${SOURCE_REF}"
+
+      - name: Record Production Release Evidence
+        run: |
+          cat <<SUMMARY >> "$GITHUB_STEP_SUMMARY"
+          ### Production Release Complete
+          - **Service:** \`${{ inputs.service }}\`
+          - **Production Artifact:** \`${{ inputs.image_digest }}\`
+          - **Config Repo Revision:** \`${{ inputs.config_revision }}\`
+          - **Approved & Released By:** \`${{ github.actor }}\`
+          SUMMARY

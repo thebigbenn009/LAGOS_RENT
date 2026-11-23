@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   lagos-rent-net:
     driver: bridge
@@ -161,3 +159,241 @@ services:
       - prometheus
       - tempo
       - loki
+
+  # ----------------------------------------------------------------------------
+  # APPLICATION MICROSERVICES (Activated via: docker compose --profile apps up -d)
+  # ----------------------------------------------------------------------------
+
+  # 1. Config Server (Port 8888) — Starts first, serves lagos_rent_config
+  config-server:
+    image: ${IMAGE_PREFIX:-lagos-rent}/config-server:${IMAGE_TAG:-latest}
+    build: ./services/config-server
+    container_name: lagos-rent-config-server
+    profiles: [ "apps" ]
+    stop_grace_period: 25s
+    environment:
+      CONFIG_REPO_URI: file:///config-repo
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    volumes:
+      - ../lagos_rent_config:/config-repo:ro
+    ports:
+      - "8888:8888"
+    networks:
+      - lagos-rent-net
+
+  # 2. Discovery Service / Eureka (Port 8761) — Waits for Config Server
+  discovery-service:
+    image: ${IMAGE_PREFIX:-lagos-rent}/discovery-service:${IMAGE_TAG:-latest}
+    build: ./services/discovery-service
+    container_name: lagos-rent-discovery-service
+    profiles: [ "apps" ]
+    stop_grace_period: 25s
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8761:8761"
+    networks:
+      - lagos-rent-net
+    depends_on:
+      config-server:
+        condition: service_healthy
+
+  # 3. API Gateway (Port 8080) — Waits for Config, Eureka, and Keycloak
+  api-gateway:
+    image: ${IMAGE_PREFIX:-lagos-rent}/api-gateway:${IMAGE_TAG:-latest}
+    build: ./services/api-gateway
+    container_name: lagos-rent-api-gateway
+    profiles: [ "apps" ]
+    stop_grace_period: 25s
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/lagos-rent
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8080:8080"
+    networks:
+      - lagos-rent-net
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+  # 4. Account Service (Port 8081)
+  account-service:
+    image: ${IMAGE_PREFIX:-lagos-rent}/account-service:${IMAGE_TAG:-latest}
+    build: ./services/account-service
+    container_name: lagos-rent-account-service
+    profiles: [ "apps" ]
+    stop_grace_period: 25s
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+      ACCOUNT_DB_URL: jdbc:postgresql://postgresql:5432/account_db
+      RABBITMQ_HOST: rabbitmq
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/lagos-rent
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8081:8081"
+    networks:
+      - lagos-rent-net
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # 5. Listing Service (Port 8082)
+  listing-service:
+    image: ${IMAGE_PREFIX:-lagos-rent}/listing-service:${IMAGE_TAG:-latest}
+    build: ./services/listing-service
+    container_name: lagos-rent-listing-service
+    profiles: [ "apps" ]
+    stop_grace_period: 25s
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+      LISTING_DB_URL: jdbc:postgresql://postgresql:5432/listing_db
+      RABBITMQ_HOST: rabbitmq
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/lagos-rent
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      AWS_REGION: ${AWS_REGION:-eu-west-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+    ports:
+      - "8082:8082"
+    networks:
+      - lagos-rent-net
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # 6. Rental Service (Port 8083)
+  rental-service:
+    image: ${IMAGE_PREFIX:-lagos-rent}/rental-service:${IMAGE_TAG:-latest}
+    build: ./services/rental-service
+    container_name: lagos-rent-rental-service
+    profiles: [ "apps" ]
+    stop_grace_period: 25s
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+      RENTAL_DB_URL: jdbc:postgresql://postgresql:5432/rental_db
+      LISTING_SERVICE_URL: http://listing-service:8082
+      RABBITMQ_HOST: rabbitmq
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/lagos-rent
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8083:8083"
+    networks:
+      - lagos-rent-net
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # 7. Payment Service (Port 8084)
+  payment-service:
+    image: ${IMAGE_PREFIX:-lagos-rent}/payment-service:${IMAGE_TAG:-latest}
+    build: ./services/payment-service
+    container_name: lagos-rent-payment-service
+    profiles: [ "apps" ]
+    stop_grace_period: 25s
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+      PAYMENT_DB_URL: jdbc:postgresql://postgresql:5432/payment_db
+      RABBITMQ_HOST: rabbitmq
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/lagos-rent
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8084:8084"
+    networks:
+      - lagos-rent-net
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # 8. Search Service (Port 8085)
+  search-service:
+    image: ${IMAGE_PREFIX:-lagos-rent}/search-service:${IMAGE_TAG:-latest}
+    build: ./services/search-service
+    container_name: lagos-rent-search-service
+    profiles: [ "apps" ]
+    stop_grace_period: 25s
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+      SEARCH_DB_URL: jdbc:postgresql://postgresql:5432/search_db
+      RABBITMQ_HOST: rabbitmq
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/lagos-rent
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8085:8085"
+    networks:
+      - lagos-rent-net
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # 9. Notification Service (Port 8086)
+  notification-service:
+    image: ${IMAGE_PREFIX:-lagos-rent}/notification-service:${IMAGE_TAG:-latest}
+    build: ./services/notification-service
+    container_name: lagos-rent-notification-service
+    profiles: [ "apps" ]
+    stop_grace_period: 25s
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka/
+      NOTIFICATION_DB_URL: jdbc:postgresql://postgresql:5432/notification_db
+      ACCOUNT_SERVICE_URL: http://account-service:8081
+      NOTIFICATION_SERVICE_CLIENT_SECRET: ${NOTIFICATION_SERVICE_CLIENT_SECRET:-secret}
+      RESEND_API_KEY: ${RESEND_API_KEY:-re_mock_key}
+      RABBITMQ_HOST: rabbitmq
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/lagos-rent
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8086:8086"
+    networks:
+      - lagos-rent-net
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
