@@ -2,3 +2,20 @@ spring:
   cloud:
     config:
       enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8180/realms/lagos-rent/protocol/openid-connect/certs
+
+eureka:
+  client:
+    enabled: false
+
+payment:
+  provider:
+    active: mock
+    paystack:
+      secret-key: sk_test_mock_secret
+  checkout:
+    callback-url: http://localhost:8080/callback

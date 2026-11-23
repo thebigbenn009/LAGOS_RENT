@@ -18,7 +18,7 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
      * Atomically locks inventory against double-booking race conditions
      * Returns 1 if successfully reserved, 0 if already reserved/rented
      **/
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("""
                 UPDATE Listing l
                 SET l.status = com.lagosrent.listing.domain.model.ListingStatus.RESERVED,
@@ -30,7 +30,7 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
     /**
      * Compensating action: releases a held listing back to PUBLISHED
      */
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("""
                 UPDATE Listing l
                 SET l.status = com.lagosrent.listing.domain.model.ListingStatus.PUBLISHED,
@@ -42,7 +42,7 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
     /**
      * Finalizes tenancy: marks reserved listing as RENTED.
      */
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("""
                 UPDATE Listing l
                 SET l.status = com.lagosrent.listing.domain.model.ListingStatus.RENTED,

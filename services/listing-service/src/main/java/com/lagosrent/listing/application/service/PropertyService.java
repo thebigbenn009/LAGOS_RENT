@@ -60,7 +60,9 @@ public class PropertyService {
         if (!property.getLandlordKeycloakId().equals(landlordKeycloakId)) {
             throw new IllegalArgumentException("You do not own this property");
         }
-
+        if (rentalUnitRepository.findByPropertyIdAndUnitNumber(propertyId, request.unitNumber()).isPresent()) {
+            throw new IllegalArgumentException("Unit number '" + request.unitNumber() + "' already exists in this property");
+        }
         RentalUnit unit = new RentalUnit(
                 property,
                 request.unitNumber(),
@@ -77,6 +79,9 @@ public class PropertyService {
 
     @Transactional(readOnly = true)
     public List<RentalUnitResponse> getPropertyUnits(UUID propertyId) {
+        if (!propertyRepository.existsById(propertyId)) {
+            throw new ResourceNotFoundException("Property", propertyId);
+        }
         return rentalUnitRepository.findByPropertyId(propertyId)
                 .stream()
                 .map(RentalUnitResponse::from)
