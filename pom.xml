@@ -133,7 +133,6 @@
           <includes>
             <include>**/*IntegrationTest.java</include>
             <include>**/*IT.java</include>
-            <include>**/*ApplicationTests.java</include>
           </includes>
         </configuration>
         <executions>
