@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         service: ${{ fromJson(needs.detect-changes.outputs.matrix_json) }}
     steps:
@@ -56,7 +57,7 @@ jobs:
           cache: 'maven'
 
       - name: Package executable JAR + git.properties + CycloneDX SBOM
-        run: mvn -B -pl "services/${{ matrix.service }}" package -DskipTests
+        run: mvn -B -s .mvn/ci-settings.xml -pl "services/${{ matrix.service }}" package -DskipTests
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

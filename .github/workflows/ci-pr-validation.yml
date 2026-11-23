@@ -69,6 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         service: ${{ fromJson(needs.detect-changes.outputs.matrix_json) }}
     steps:
@@ -83,7 +84,7 @@ jobs:
           cache: 'maven'
 
       - name: Run Enforcer, Unit Tests, Contract Tests & JaCoCo Report
-        run: mvn -B -pl "services/${{ matrix.service }}" test
+        run: mvn -B -s .mvn/ci-settings.xml -pl "services/${{ matrix.service }}" test
 
       - name: Upload JUnit & JaCoCo Coverage Reports
         if: always()
@@ -105,6 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         service: ${{ fromJson(needs.detect-changes.outputs.matrix_json) }}
     steps:
@@ -119,7 +121,7 @@ jobs:
           cache: 'maven'
 
       - name: Package JAR, Generate CycloneDX SBOM & Run Testcontainers Integration Tests
-        run: mvn -B -pl "services/${{ matrix.service }}" verify -Dsurefire.skip=true
+        run: mvn -B -s .mvn/ci-settings.xml -pl "services/${{ matrix.service }}" verify -Dsurefire.skip=true
 
       - name: Build Multi-Stage Docker Image
         run: docker build -t "lagos-rent/${{ matrix.service }}:pr-check" "services/${{ matrix.service }}"
